@@ -1,0 +1,252 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-heading);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Surface & Typography (Light Mode) */
+  --background: #f8fbff; /* Putih dengan sentuhan biru es (Ice Blue) */
+  --foreground: #0f2855; /* Navy sebagai warna teks utama */
+  --card: #ffffff;
+  --card-foreground: #0f2855;
+  --popover: #ffffff;
+  --popover-foreground: #0f2855;
+
+  /* Brand / Primary Palette */
+  --primary: #2e77ff;
+  --primary-foreground: #ffffff; /* Putih sangat jelas di atas biru elektrik */
+
+  /* Secondary & Accent Palette */
+  --secondary: #c6dcfe; /* Tint biru paling muda */
+  --secondary-foreground: #1f4faa; /* Mid-tone */
+  --muted: #f0f5ff;
+  --muted-foreground: #5c8ae6; /* Biru pudar untuk teks sekunder */
+  --accent: #e6f0ff;
+  --accent-foreground: #0f2855;
+
+  /* UI Boundaries & Interactions */
+  --destructive: #ef4444; 
+  --destructive-foreground: #ffffff;
+  --border: #cce0ff; /* Garis batas biru muda */
+  --input: #cce0ff;
+  --ring: #2e77ff;
+
+  /* Charts Monochromatic Palette (Trustworthy Blues) */
+  --chart-1: #2e77ff;
+  --chart-2: #1f4faa;
+  --chart-3: #5c8ae6;
+  --chart-4: #0f2855;
+  --chart-5: #99c2ff;
+
+  --radius: 0.625rem;
+
+  /* Sidebar Component */
+  --sidebar: #f2f7ff;
+  --sidebar-foreground: #0f2855;
+  --sidebar-primary: #2e77ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6f0ff;
+  --sidebar-accent-foreground: #0f2855;
+  --sidebar-border: #cce0ff;
+  --sidebar-ring: #2e77ff;
+}
+
+.dark {
+  /* Surface & Typography (Dark Mode) */
+  --background: #08152e; /* Navy sangat gelap, hampir hitam */
+  --foreground: #e6f0ff; /* Ice blue muda untuk teks agar tidak menyilaukan */
+  --card: #0f2855; /* Menggunakan Darkest color sebagai card background */
+  --card-foreground: #e6f0ff;
+  --popover: #0f2855;
+  --popover-foreground: #e6f0ff;
+
+  /* Brand / Primary Palette */
+  --primary: #2e77ff; /* Primary di dark mode tetap "pop" */
+  --primary-foreground: #ffffff;
+
+  /* Secondary & Accent Palette */
+  --secondary: #1f4faa; /* Mid-tone untuk elemen sekunder */
+  --secondary-foreground: #ffffff;
+  --muted: #163673; 
+  --muted-foreground: #80adff;
+  --accent: #1f4faa;
+  --accent-foreground: #ffffff;
+
+  /* UI Boundaries & Interactions */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #163673;
+  --input: #163673;
+  --ring: #2e77ff;
+
+  /* Charts Monochromatic Palette */
+  --chart-1: #2e77ff;
+  --chart-2: #66a3ff;
+  --chart-3: #1f4faa;
+  --chart-4: #99c2ff;
+  --chart-5: #0f2855; /* Kontras di dark mode */
+
+  /* Sidebar Component */
+  --sidebar: #0a1b3b;
+  --sidebar-foreground: #e6f0ff;
+  --sidebar-primary: #2e77ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #163673;
+  --sidebar-accent-foreground: #e6f0ff;
+  --sidebar-border: #0f2855;
+  --sidebar-ring: #2e77ff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary);
+  }
+}
+
+@utility response-ai {
+  @apply flex flex-col w-full gap-4 max-w-9/10;
+
+  p {
+    @apply w-full my-2 text-wrap;
+  }
+
+  div {
+    @apply max-w-full;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply w-full my-2 font-semibold text-wrap;
+  }
+
+  h1 {
+    @apply text-3xl;
+  }
+
+  h2 {
+    @apply text-2xl;
+  }
+
+  h3 {
+    @apply text-xl;
+  }
+
+  h4 {
+    @apply text-base;
+  }
+
+  h5 {
+    @apply text-sm;
+  }
+
+  h6 {
+    @apply text-xs;
+  }
+
+  hr {
+    @apply border-t-0! border-b! pt-4;
+  }
+
+  ol {
+    @apply w-full space-y-1 list-decimal text-wrap;
+    li {
+      @apply list-inside text-wrap;
+    }
+  }
+
+  ul {
+    @apply w-full space-y-1 list-disc text-wrap;
+    li {
+      @apply list-inside text-wrap;
+      ul {
+        list-style-type: circle !important;
+        li {
+          @apply ml-2 list-inside text-wrap;
+        }
+      }
+    }
+  }
+
+  pre {
+    @apply w-full text-wrap;
+  }
+}
