@@ -1,9 +1,5 @@
 "use server";
 
-import { createAI } from "@/features/ai/instance";
-import type { Conversation } from "@/app/types/ai";
-import { findEmbedding } from "./embedding";
-import { getTransactionDeclaration } from "./functionTransaction";
 import {
 	type Content,
 	type FunctionCall,
@@ -11,9 +7,13 @@ import {
 	HarmCategory,
 	type Part,
 } from "@google/genai";
+import type { Conversation } from "@/app/types/ai";
+import { createAI } from "@/features/ai/instance";
+import { findEmbedding } from "./embedding";
+import { getTransactionDeclaration } from "./functionTransaction";
 
 const MAX_FUNCTION_CALL_ROUNDS = 5;
-const CHAT_MODEL = "gemini-2.5-flash";
+const CHAT_MODEL = "gemini-3.1-flash-lite";
 
 interface UserProfile {
 	currency?: string;
@@ -61,11 +61,9 @@ export async function handleChat(
 		}
 
 		for (const part of parts) {
-			if (!part.text) {
-				continue;
-			} else if (part.thought) {
+			if (part.text && part.thought) {
 				result.thought += part.text;
-			} else {
+			} else if (part.text) {
 				result.answer += part.text;
 			}
 		}
@@ -91,7 +89,7 @@ async function generalChat(
 	const riskStr = profile?.risk_profile || "belum diatur";
 	const ai = createAI();
 	const response = await ai.models.generateContentStream({
-		model: "gemini-2.5-flash",
+		model: CHAT_MODEL,
 		contents: withoutThoughtParts(conversation),
 		config: {
 			thinkingConfig: {
@@ -108,11 +106,11 @@ async function generalChat(
             Kamu adalah Hanbot, seorang edukator dan financial advisor yang mampu memberikan analogi sehari-hari 
             agar penjelasan rumit jadi lebih mudah dipahami.
 
-			   [Profil Keuangan Pengguna]
-			   - Pendapatan bulanan: ${incomeStr}
-			   - Tujuan keuangan: ${goalStr}
-			   - Profil risiko: ${riskStr}
-			   Gunakan profil ini saat relevan dan jangan mengarang data yang belum diatur.
+				[Profil Keuangan Pengguna]
+				- Pendapatan bulanan: ${incomeStr}
+				- Tujuan keuangan: ${goalStr}
+				- Profil risiko: ${riskStr}
+				Gunakan profil ini saat relevan dan jangan mengarang data yang belum diatur.
          
             [Instruction]
             - Jawab semua pertanyaan yang sesuai dengan bidang finance, investasi, dan pengelolaan kekayaan secara umum.
@@ -285,7 +283,9 @@ export async function* handleChatStreaming(
 			}
 
 			if (functionCallRound === MAX_FUNCTION_CALL_ROUNDS) {
-				throw new Error("Personal chat exceeded the maximum function call rounds");
+				throw new Error(
+					"Personal chat exceeded the maximum function call rounds",
+				);
 			}
 
 			contents.push({ role: "model", parts: modelParts });
@@ -299,11 +299,7 @@ export async function* handleChatStreaming(
 					let resultData: Awaited<ReturnType<typeof findEmbedding>>;
 					switch (name) {
 						case "get_transaction":
-							resultData = await findEmbedding(
-								JSON.stringify(args),
-								0.3,
-								100,
-							);
+							resultData = await findEmbedding(JSON.stringify(args), 0.3, 100);
 							break;
 						default:
 							throw new Error(`Unknown function call: ${name}`);

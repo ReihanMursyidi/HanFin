@@ -1,288 +1,323 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from "react";
-
-import Markdown from 'react-markdown';
-import { BotMessageSquare, BotIcon, XIcon, ChevronDownIcon } from "lucide-react";
-import { Typing } from '@/components/typing';
 import { useMutation } from "@tanstack/react-query";
 
+import {
+	BotIcon,
+	BotMessageSquare,
+	ChevronDownIcon,
+	XIcon,
+} from "lucide-react";
+
+import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import type { Conversation } from "@/app/types/ai";
+import { Typing } from "@/components/typing";
 import { Button } from "@/components/ui/button";
+
 import {
-   Collapsible,
-   CollapsibleContent,
-   CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
 import {
-   Drawer,
-   DrawerClose,
-   DrawerTrigger,
-   DrawerContent,
-   DrawerHeader,
-   DrawerTitle,
-   DrawerDescription,
-   DrawerFooter
+	Drawer,
+	DrawerClose,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+	DrawerTrigger,
 } from "@/components/ui/drawer";
-import { cn } from "@/lib/utils";
+
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { handleChatStreaming } from "@/features/ai/chat";
 import { getFinancialProfile } from "@/features/profile/action";
+import { cn } from "@/lib/utils";
 import ChatbotTextArea from "./chatbot-textarea";
-import { Conversation } from "@/app/types/ai";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type FinancialProfile = Awaited<ReturnType<typeof getFinancialProfile>>;
+type ChatMessage = Conversation & { id: string };
 
 export default function ChatbotDrawer() {
-   const chatRef = useRef<HTMLDivElement>(null);
-   const [conversation, setConversation] = useState<Conversation[]>([]);
-   const [profile, setProfile] = useState<FinancialProfile>(null);
-   
-   const [isThinking, setIsThinking] = useState<boolean>(false);
-   const [mode, setMode] = useState<'general' | 'personal'>('general');
+	const chatRef = useRef<HTMLDivElement>(null);
+	const [conversation, setConversation] = useState<ChatMessage[]>([]);
+	const [profile, setProfile] = useState<FinancialProfile>(null);
 
-   useEffect(() => {
-      let isMounted = true;
+	const [isThinking, setIsThinking] = useState<boolean>(false);
+	const [mode, setMode] = useState<"general" | "personal">("general");
 
-      getFinancialProfile()
-         .then((financialProfile) => {
-            if (isMounted) setProfile(financialProfile);
-         })
-         .catch((error: unknown) => {
-            console.error('Error loading financial profile:', error);
-         });
+	useEffect(() => {
+		let isMounted = true;
 
-      return () => {
-         isMounted = false;
-      };
-   }, []);
+		getFinancialProfile()
+			.then((financialProfile) => {
+				if (isMounted) setProfile(financialProfile);
+			})
+			.catch((error: unknown) => {
+				console.error("Error loading financial profile:", error);
+			});
 
-   const { mutate: handleChatMutation, isPending } = useMutation({
-      mutationFn: async ({
-         isThinking,
-         chatHistory,
-         mode,
-      }: {
-         isThinking: boolean;
-         chatHistory: Conversation[];
-         mode: 'general' | 'personal';
-      }) => {
-         setConversation((prev) => [
-            ...prev,
-            {
-               role: 'model',
-               parts: isThinking
-                  ? [{ thought: true, text: '' }, { text: '' }]
-                  : [{ text: '' }],
-            },
-         ]);
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
-         const response = await handleChatStreaming(
-            chatHistory,
-            profile,
-            isThinking,
-            mode,
-         );
+	const { mutate: handleChatMutation, isPending } = useMutation({
+		mutationFn: async ({
+			isThinking,
+			chatHistory,
+			mode,
+		}: {
+			isThinking: boolean;
+			chatHistory: Conversation[];
+			mode: "general" | "personal";
+		}) => {
+			setConversation((prev) => [
+				...prev,
+				{
+					id: crypto.randomUUID(),
+					role: "model",
+					parts: isThinking
+						? [{ thought: true, text: "" }, { text: "" }]
+						: [{ text: "" }],
+				},
+			]);
 
-         for await (const chunk of response) {
-            setConversation((prev) => {
-               const lastIndex = prev.length - 1;
-               const message = prev[lastIndex];
-               if (message?.role !== 'model') return prev;
+			const response = await handleChatStreaming(
+				chatHistory,
+				profile,
+				isThinking,
+				mode,
+			);
 
-               const partIndex = isThinking
-                  ? chunk.type === 'thought' ? 0 : 1
-                  : 0;
-               const parts = [...message.parts];
-               const part = parts[partIndex];
-               parts[partIndex] = {
-                  ...part,
-                  text: `${part?.text ?? ''}${chunk.text}`,
-               };
+			for await (const chunk of response) {
+				setConversation((prev) => {
+					const lastIndex = prev.length - 1;
+					const message = prev[lastIndex];
+					if (message?.role !== "model") return prev;
 
-               const next = [...prev];
-               next[lastIndex] = { ...message, parts };
-               return next;
-            });
-         }
-      },
+					const partIndex = isThinking ? (chunk.type === "thought" ? 0 : 1) : 0;
+					const parts = [...message.parts];
+					const part = parts[partIndex];
+					parts[partIndex] = {
+						...part,
+						text: `${part?.text ?? ""}${chunk.text}`,
+					};
 
-      onError: (error, variables) => {
-         const errorText = `An unexpected error has occurred: ${error.message}`;
-         setConversation((prev) => {
-            const lastIndex = prev.length - 1;
-            const message = prev[lastIndex];
-            if (message?.role !== 'model') {
-               return [...prev, { role: 'model', parts: [{ text: errorText }] }];
-            }
+					const next = [...prev];
+					next[lastIndex] = { ...message, parts };
+					return next;
+				});
+			}
+		},
 
-            const answerIndex = variables.isThinking ? 1 : 0;
-            const parts = [...message.parts];
-            const answer = parts[answerIndex];
-            parts[answerIndex] = {
-               ...answer,
-               text: answer?.text ? `${answer.text}\n\n${errorText}` : errorText,
-            };
+		onError: (error, variables) => {
+			const errorText = `An unexpected error has occurred: ${error.message}`;
+			setConversation((prev) => {
+				const lastIndex = prev.length - 1;
+				const message = prev[lastIndex];
+				if (message?.role !== "model") {
+					return [
+						...prev,
+						{
+							id: crypto.randomUUID(),
+							role: "model",
+							parts: [{ text: errorText }],
+						},
+					];
+				}
 
-            const next = [...prev];
-            next[lastIndex] = { ...message, parts };
-            return next;
-         });
-      },
-   });
+				const answerIndex = variables.isThinking ? 1 : 0;
+				const parts = [...message.parts];
+				const answer = parts[answerIndex];
+				parts[answerIndex] = {
+					...answer,
+					text: answer?.text ? `${answer.text}\n\n${errorText}` : errorText,
+				};
 
-   function sendMessage(message: string) {
-      const newMessage = { role: 'user', parts: [{ text: message }] };
-      const updatedConversation = [...conversation, newMessage];
-      
-      setConversation(updatedConversation);
+				const next = [...prev];
+				next[lastIndex] = { ...message, parts };
+				return next;
+			});
+		},
+	});
 
-      const MAX_CHARS = 3000;
-      let currentCharCount = 0;
-      const historyForAI: typeof updatedConversation = [];
+	function sendMessage(message: string) {
+		const newMessage: ChatMessage = {
+			id: crypto.randomUUID(),
+			role: "user",
+			parts: [{ text: message }],
+		};
+		const updatedConversation = [...conversation, newMessage];
 
-      for (let i = updatedConversation.length - 1; i >= 0; i--) {
-         const msg = updatedConversation[i];
-         const msgLength = msg.parts.reduce((acc, part) => acc + (part.text?.length || 0), 0);
-         if (currentCharCount + msgLength > MAX_CHARS && historyForAI.length > 0) {
-            break;
-         }
+		setConversation(updatedConversation);
 
-         historyForAI.unshift(msg);
-         currentCharCount += msgLength;
-      }
-      handleChatMutation({ isThinking, chatHistory: historyForAI, mode });
-   }
+		const MAX_CHARS = 3000;
+		let currentCharCount = 0;
+		const historyForAI: Conversation[] = [];
 
-   useEffect(() => {
-      if (chatRef.current) {
-         chatRef.current?.scrollTo({
-            top: chatRef.current.scrollHeight,
-            behavior: 'smooth',
-         });
-      }
-   }, [conversation]);
+		for (let i = updatedConversation.length - 1; i >= 0; i--) {
+			const msg = updatedConversation[i];
+			const msgLength = msg.parts.reduce(
+				(acc, part) => acc + (part.text?.length || 0),
+				0,
+			);
+			if (currentCharCount + msgLength > MAX_CHARS && historyForAI.length > 0) {
+				break;
+			}
 
-   return (
-      <Drawer direction="right" modal={false}>
-         <DrawerTrigger className="fixed bottom-4 right-4" asChild>
-            <Button
-               className="rounded-full shadow-lg bg-background size-14 hover:bg-primary hover:text-secondary dark:bg-slate-800 dark:hover:bg-primary"
-               size="icon-lg"
-               variant="outline"
-            >
-               <BotMessageSquare className="size-6" />
-            </Button>
-         </DrawerTrigger>
-         
-            <DrawerContent className="w-screen! max-w-none! md:w-110! md:max-w-none!">
-               <DrawerHeader className="flex flex-row justify-between pb-4 border-b">
-                  <div>
-                     <DrawerTitle className="font-bold text-primary">
-                        AI Financial Advisor
-                     </DrawerTitle>
-                     <DrawerDescription>
-                        Get personalized financial advice.
-                     </DrawerDescription>
-                  </div>
-                  <DrawerClose asChild>
-                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-muted">
-                        <XIcon />
-                     </Button>
-                  </DrawerClose>
-               </DrawerHeader>
-               <ScrollArea
-                  className={cn(
-                     "min-h-0 flex-1 bg-background rounded-2xl h-full",
-                     conversation.length === 0 && "overflow-hidden"
-                  )}
-               >
-                  <div className="flex flex-col w-full h-full min-h-[50vh] px-4 py-4 rounded-2xl bg-slate-50/50 dark:bg-background">
-                     {conversation.length > 0 ? (
-                        <div
-                           ref={chatRef}
-                           className="flex flex-col min-h-full gap-6 overflow-x-hidden"
-                        >
-                           {conversation.map((message, index) => (
-                              <div
-                                 key={`conversation-${index}`}
-                                 className={cn(
-                                    'flex flex-col gap-1.5 w-full',
-                                    message.role === 'model' ? 'items-start' : 'items-end',
-                                 )}
-                              >
-                                 <div
-                                    className={cn('flex flex-col w-full', {
-                                       'bg-primary/20 text-primary px-5 py-2 rounded-3xl rounded-br-md w-fit max-w-9/10':
-                                          message.role === 'user'
-                                    })}
-                                 >
-                                    {message.role === 'model' && (
-                                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider ml-1">
-                                          <BotIcon className="size-3.5" />
-                                          AI Advisor
-                                       </div>
-                                    )}
+			historyForAI.unshift({ role: msg.role, parts: msg.parts });
+			currentCharCount += msgLength;
+		}
+		handleChatMutation({ isThinking, chatHistory: historyForAI, mode });
+	}
 
-                                    {message.role === 'model' ? (
-                                       <div className="response-ai">
-                                          {message.parts.map((part, partIndex) => (
-                                             <div key={`response-ai-${index}-${partIndex}`}>
-                                                {part.thought ? (
-                                                   <Collapsible className="mb-2">
-                                                      <CollapsibleTrigger asChild>
-                                                         <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground hover:bg-slate-100 dark:hover:bg-muted">
-                                                            Tampilkan alur berpikir
-                                                            <ChevronDownIcon className="ml-1 size-3" />
-                                                         </Button>
-                                                      </CollapsibleTrigger>
-                                                      <CollapsibleContent>
-                                                         <div className="pl-3 mt-2 ml-2 space-y-2 text-xs italic border-l-2 border-slate-200 dark:border-muted-foreground/30 text-muted-foreground">
-                                                            <Markdown>{part.text}</Markdown>
-                                                         </div>
-                                                      </CollapsibleContent>
-                                                   </Collapsible>
-                                                ) : (
-                                                   <div className="[&>p]:mb-3 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3 [&>h3]:font-bold [&>h3]:text-base [&>h3]:mb-2">
-                                                      <Markdown>{part.text}</Markdown>
-                                                   </div>
-                                                )}
-                                             </div>
-                                          ))}
-                                       </div>
-                                    ) : (
-                                       message.parts[0].text
-                                    )}
-                                 </div>
-                              </div>
-                           ))}
+	useEffect(() => {
+		if (chatRef.current) {
+			chatRef.current.scrollTo({
+				top: chatRef.current.scrollHeight,
+				behavior: "smooth",
+			});
+		}
+	});
 
-                           {isPending && (
-                              <div className="flex items-center">
-                                 <Typing className="size-8 text-primary/50" />
-                              </div>
-                           )}
-                        </div>
-                     ) : (
-                        <div className="flex flex-col items-center justify-center flex-1 w-full h-full gap-2 my-auto text-center">
-                           <BotIcon className="mb-2 size-16 text-primary" />
-                           <h2 className="text-2xl font-bold text-center text-foreground">Hello There!</h2>
-                           <h4 className="max-w-[80%] text-center text-sm text-muted-foreground">Ask me anything about your finances or investment strategies.</h4>
-                        </div>
-                     )}
-                  </div>
-               </ScrollArea>
-               <DrawerFooter className="p-0">
-                  <ChatbotTextArea
-                     disabled={isPending}
-                     isThinking={isThinking}
-                     setIsThinking={setIsThinking}
-                     sendMessage={sendMessage} 
-                     mode={mode}
-                     setMode={setMode}
-                  />
-               </DrawerFooter>
-            </DrawerContent>
-         
-      </Drawer>
-   );
+	return (
+		<Drawer direction="right" modal={false}>
+			<DrawerTrigger className="fixed bottom-4 right-4" asChild>
+				<Button
+					className="rounded-full shadow-lg bg-background size-14 hover:bg-primary hover:text-secondary dark:bg-slate-800 dark:hover:bg-primary"
+					size="icon-lg"
+					variant="outline"
+				>
+					<BotMessageSquare className="size-6" />
+				</Button>
+			</DrawerTrigger>
+
+			<DrawerContent className="w-screen! max-w-none! md:w-110! md:max-w-none!">
+				<DrawerHeader className="flex flex-row justify-between pb-4 border-b">
+					<div>
+						<DrawerTitle className="font-bold text-primary">
+							AI Financial Advisor
+						</DrawerTitle>
+						<DrawerDescription>
+							Get personalized financial advice.
+						</DrawerDescription>
+					</div>
+					<DrawerClose asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="text-muted-foreground hover:bg-muted"
+						>
+							<XIcon />
+						</Button>
+					</DrawerClose>
+				</DrawerHeader>
+				<ScrollArea
+					className={cn(
+						"min-h-0 flex-1 bg-background rounded-2xl h-full",
+						conversation.length === 0 && "overflow-hidden",
+					)}
+				>
+					<div className="flex flex-col w-full h-full min-h-[50vh] px-4 py-4 rounded-2xl bg-slate-50/50 dark:bg-background">
+						{conversation.length > 0 ? (
+							<div
+								ref={chatRef}
+								className="flex flex-col min-h-full gap-6 overflow-x-hidden"
+							>
+								{conversation.map((message) => (
+									<div
+										key={message.id}
+										className={cn(
+											"flex flex-col gap-1.5 w-full",
+											message.role === "model" ? "items-start" : "items-end",
+										)}
+									>
+										<div
+											className={cn("flex flex-col w-full", {
+												"bg-primary/20 text-primary px-5 py-2 rounded-3xl rounded-br-md w-fit max-w-9/10":
+													message.role === "user",
+											})}
+										>
+											{message.role === "model" && (
+												<div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider ml-1">
+													<BotIcon className="size-3.5" />
+													AI Advisor
+												</div>
+											)}
+
+											{message.role === "model" ? (
+												<div className="response-ai">
+													{message.parts.map((part) => (
+														<div
+															key={`${message.id}-${part.thought ? "thought" : "answer"}`}
+														>
+															{part.thought ? (
+																<Collapsible className="mb-2">
+																	<CollapsibleTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="sm"
+																			className="h-8 px-2 text-xs text-muted-foreground hover:bg-slate-100 dark:hover:bg-muted"
+																		>
+																			Tampilkan alur berpikir
+																			<ChevronDownIcon className="ml-1 size-3" />
+																		</Button>
+																	</CollapsibleTrigger>
+																	<CollapsibleContent>
+																		<div className="pl-3 mt-2 ml-2 space-y-2 text-xs italic border-l-2 border-slate-200 dark:border-muted-foreground/30 text-muted-foreground">
+																			<Markdown>{part.text}</Markdown>
+																		</div>
+																	</CollapsibleContent>
+																</Collapsible>
+															) : (
+																<div className="[&>p]:mb-3 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3 [&>h3]:font-bold [&>h3]:text-base [&>h3]:mb-2">
+																	<Markdown>{part.text}</Markdown>
+																</div>
+															)}
+														</div>
+													))}
+												</div>
+											) : (
+												message.parts[0].text
+											)}
+										</div>
+									</div>
+								))}
+
+								{isPending && (
+									<div className="flex items-center">
+										<Typing className="size-8 text-primary/50" />
+									</div>
+								)}
+							</div>
+						) : (
+							<div className="flex flex-col items-center justify-center flex-1 w-full h-full gap-2 my-auto text-center">
+								<BotIcon className="mb-2 size-16 text-primary" />
+								<h2 className="text-2xl font-bold text-center text-foreground">
+									Hello There!
+								</h2>
+								<h4 className="max-w-[80%] text-center text-sm text-muted-foreground">
+									Ask me anything about your finances or investment strategies.
+								</h4>
+							</div>
+						)}
+					</div>
+				</ScrollArea>
+				<DrawerFooter className="p-0">
+					<ChatbotTextArea
+						disabled={isPending}
+						isThinking={isThinking}
+						setIsThinking={setIsThinking}
+						sendMessage={sendMessage}
+						mode={mode}
+						setMode={setMode}
+					/>
+				</DrawerFooter>
+			</DrawerContent>
+		</Drawer>
+	);
 }
