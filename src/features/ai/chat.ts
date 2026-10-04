@@ -83,7 +83,7 @@ export async function handleChat(
    const ai = createAI();
    const response = await ai.models.generateContent({
       model: CHAT_MODEL,
-      contents: [...conversation],
+      contents: withoutThoughtParts([...conversation]),
       config: {
          thinkingConfig: {
             includeThoughts: isThinking,
@@ -112,8 +112,13 @@ export async function handleChat(
          }
       } 
    } else {
-      result.answer = `${response.text}`;
+      result.answer = response.text ?? '';
    }
+
+   if (!result.answer) {
+      throw new Error('AI response did not contain an answer');
+   }
+
    return result;
 }
 
@@ -136,7 +141,7 @@ async function generalChat(conversation: Content[], isThinking: boolean) {
          temperature: 0.2,
          topK: 5,
          topP: 0.1,
-         maxOutputTokens: 2048,
+         maxOutputTokens: isThinking ? 4096 : 2048,
          stopSequences: ['\n\n\n', '###', 'User:', 'Pengguna:'],
       },
    });

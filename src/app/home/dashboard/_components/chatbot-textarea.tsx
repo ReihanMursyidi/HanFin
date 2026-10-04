@@ -20,12 +20,14 @@ const formSchema = z.object({
 });
 
 export default function ChatbotTextarea({
+   disabled,
    sendMessage,
    isThinking,
    setIsThinking,
    mode,
    setMode,
 }: {
+   disabled: boolean;
    sendMessage: (message: string) => void;
    isThinking: boolean;
    setIsThinking: Dispatch<SetStateAction<boolean>>;
@@ -68,6 +70,7 @@ export default function ChatbotTextarea({
                      autoComplete="off"
                      className="h-16 w-full px-3 py-2 bg-transparent resize-none focus:outline-none"
                      onKeyDown={handleKeyDown}
+                     disabled={disabled}
                   />
                </Field>
             )}
@@ -104,6 +107,7 @@ export default function ChatbotTextarea({
                   type="submit"
                   size="icon"
                   variant="ghost"
+                  disabled={disabled}
                   className="cursor-pointer text-foreground hover:bg-secondary hover:text-foreground disabled:bg-transparent"
                >
                   <SendIcon className="size-5" />

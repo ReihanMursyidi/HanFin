@@ -248,6 +248,7 @@ export default function ChatbotDrawer() {
                </ScrollArea>
                <DrawerFooter className="p-0">
                   <ChatbotTextArea
+                     disabled={isPending}
                      isThinking={isThinking}
                      setIsThinking={setIsThinking}
                      sendMessage={sendMessage} 
