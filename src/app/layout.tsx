@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans, Montserrat } from "next/font/google";
-import "./globals.css";
+import { Geist, Geist_Mono, Montserrat, Noto_Sans } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import QueryProvider from '@/providers/query-client';
-import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/components/theme-provider";
+import "./globals.css";
 
 const montserratHeading = Montserrat({subsets:['latin'],variable:'--font-heading'});
 
