@@ -1,12 +1,12 @@
 "use server";
 
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { Type } from "@google/genai";
+import type { Transaction } from "@/app/types/transaction";
 import { findEmbedding } from "./embedding";
 import { createAI } from "./instance";
-import { Transaction } from "@/app/types/transaction";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 
 export async function generateChart(request: string) {
 	const ai = createAI();
