@@ -26,14 +26,14 @@ function Typing({
         className={cn("inline-flex items-center gap-[12%]", className)}
         {...props}
       >
-        {Array.from({ length: dots }, (_, index) => (
+        {Array.from({ length: dots }, (_, index) => index).map((delay) => (
           <span
-            key={index}
+            key={delay}
             aria-hidden="true"
             className="inline-block aspect-square grow rounded-full bg-current"
             style={{
               animation: "loading-ui-typing var(--duration, 1s) infinite",
-              animationDelay: `calc(var(--delay, 160ms) * ${index})`,
+              animationDelay: `calc(var(--delay, 160ms) * ${delay})`,
             }}
           />
         ))}
