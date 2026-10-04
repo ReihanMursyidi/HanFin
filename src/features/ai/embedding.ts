@@ -1,7 +1,7 @@
 'use server';
 
-import { createAI } from './instance';
 import { createClient } from '@/lib/supabase/server';
+import { createAI } from './instance';
 
 export async function generateEmbedding(contents: string) {
    const ai = createAI();
