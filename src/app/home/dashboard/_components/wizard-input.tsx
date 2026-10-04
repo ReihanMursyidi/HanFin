@@ -5,7 +5,7 @@ import { KeyboardEvent, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { Loader2Icon, MicIcon, SendIcon, SparklesIcon, SquareIcon } from 'lucide-react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import z from 'zod';
 
@@ -90,7 +90,7 @@ export default function WizardInput({ refetch }: { refetch: () => void }) {
 
          mediaRecorder.start();
          setIsRecording(true);
-      } catch (error) {
+      } catch {
          toast.error('Failed to access media recorder');
       }
    }
@@ -102,7 +102,8 @@ export default function WizardInput({ refetch }: { refetch: () => void }) {
       }
    };
 
-   const isText = form.watch('message') !== '';
+   const message = useWatch({ control: form.control, name: 'message' });
+   const isText = message !== '';
 
    return (
       <Card className="w-full p-0 border-primary/20">

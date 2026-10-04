@@ -1,22 +1,37 @@
 "use server";
 
 import { createAI } from "@/features/ai/instance";
-import { Conversation } from "@/app/types/ai";
-import { findEmbedding, generateEmbedding } from "./embedding";
+import type { Conversation } from "@/app/types/ai";
+import { findEmbedding } from "./embedding";
 import { getTransactionDeclaration } from "./functionTransaction";
 import {
-	Content,
-	FunctionCall,
+	type Content,
+	type FunctionCall,
 	HarmBlockThreshold,
 	HarmCategory,
-	Part,
+	type Part,
 } from "@google/genai";
+
+const MAX_FUNCTION_CALL_ROUNDS = 5;
+const CHAT_MODEL = "gemini-2.5-flash";
 
 interface UserProfile {
 	currency?: string;
 	monthly_income?: number;
-	financial_goal?: string;
-	risk_profile?: string;
+	financial_goal?: string | null;
+	risk_profile?: string | null;
+}
+
+export type ChatStreamChunk = {
+	type: "thought" | "answer";
+	text: string;
+};
+
+function withoutThoughtParts(conversation: Content[]): Content[] {
+	return conversation.flatMap((content) => {
+		const parts = content.parts?.filter((part) => !part.thought) ?? [];
+		return parts.length > 0 ? [{ ...content, parts }] : [];
+	});
 }
 
 export async function handleChat(
@@ -25,8 +40,8 @@ export async function handleChat(
 ) {
 	const ai = createAI();
 	const response = await ai.models.generateContent({
-		model: "gemini-3.5-flash",
-		contents: [...conversation],
+		model: CHAT_MODEL,
+		contents: withoutThoughtParts([...conversation]),
 		config: {
 			thinkingConfig: {
 				includeThoughts: isThinking,
@@ -55,33 +70,49 @@ export async function handleChat(
 			}
 		}
 	} else {
-		result.answer = `${response.text}`;
+		result.answer = response.text ?? "";
+	}
+
+	if (!result.answer) {
+		throw new Error("AI response did not contain an answer");
 	}
 	return result;
 }
 
 async function generalChat(
-   conversation: Content[],
-   isThinking?: boolean,
+	conversation: Content[],
+	profile: UserProfile | null,
+	isThinking: boolean,
 ) {
-   const ai = createAI();
-   const response = await ai.models.generateContentStream({
-      model: "gemini-3.5-flash-lite",
-      contents: [...conversation],
-      config: {
-         thinkingConfig: {
-            includeThoughts: isThinking,
-         },
-         tools: [
-            {
-               googleSearch: {},
-               urlContext: {},
-            },
-         ],
-         systemInstruction: `
+	const incomeStr = profile?.monthly_income
+		? `${profile.currency || "IDR"} ${profile.monthly_income.toLocaleString("id-ID")}`
+		: "belum diatur";
+	const goalStr = profile?.financial_goal || "belum diatur";
+	const riskStr = profile?.risk_profile || "belum diatur";
+	const ai = createAI();
+	const response = await ai.models.generateContentStream({
+		model: "gemini-2.5-flash",
+		contents: withoutThoughtParts(conversation),
+		config: {
+			thinkingConfig: {
+				includeThoughts: isThinking,
+			},
+			tools: [
+				{
+					googleSearch: {},
+					urlContext: {},
+				},
+			],
+			systemInstruction: `
             [Role]
             Kamu adalah Hanbot, seorang edukator dan financial advisor yang mampu memberikan analogi sehari-hari 
             agar penjelasan rumit jadi lebih mudah dipahami.
+
+			   [Profil Keuangan Pengguna]
+			   - Pendapatan bulanan: ${incomeStr}
+			   - Tujuan keuangan: ${goalStr}
+			   - Profil risiko: ${riskStr}
+			   Gunakan profil ini saat relevan dan jangan mengarang data yang belum diatur.
          
             [Instruction]
             - Jawab semua pertanyaan yang sesuai dengan bidang finance, investasi, dan pengelolaan kekayaan secara umum.
@@ -104,14 +135,14 @@ async function generalChat(
             1. Analisis singkat pertanyaan dalam 1 kalimat.
             2. Langkah/penjelasan edukasi berupa bullet points.
          `,
-         temperature: 0.2,
-         topK: 5,
-         topP: 0.1,
-         maxOutputTokens: 2048,
-         stopSequences: ["\n\n\n", "###", "User:", "Pengguna:"],
-      },
-   });
-   return response;
+			temperature: 0.2,
+			topK: 5,
+			topP: 0.1,
+			maxOutputTokens: isThinking ? 4096 : 2048,
+			stopSequences: ["\n\n\n", "###", "User:", "Pengguna:"],
+		},
+	});
+	return response;
 }
 
 export async function* handleChatStreaming(
@@ -119,43 +150,44 @@ export async function* handleChatStreaming(
 	profile: UserProfile | null,
 	isThinking: boolean,
 	mode: "general" | "personal",
-) {
-
+): AsyncGenerator<ChatStreamChunk> {
 	if (mode === "general") {
-		const response = await generalChat(conversation, isThinking);
+		const response = await generalChat(conversation, profile, isThinking);
+		let hasAnswer = false;
 
-		if (isThinking) {
-			for await (const chunk of response) {
-				const parts = chunk.candidates?.[0]?.content?.parts;
-				if (parts) {
-					for (const part of parts) {
-						if (!part.text) {
-							continue;
-						} else if (part.thought) {
-							yield `[thought]${part.text}`;
-						} else {
-							yield part.text;
-						}
-					}
-				}
+		for await (const chunk of response) {
+			const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+			if (parts.length === 0 && chunk.text) {
+				hasAnswer = true;
+				yield { type: "answer", text: chunk.text };
 			}
-		} else {
-			for await (const chunk of response) {
-				if (chunk.text) {
-					yield chunk.text;
+
+			for (const part of parts) {
+				if (!part.text) continue;
+				if (part.thought) {
+					if (isThinking) yield { type: "thought", text: part.text };
+				} else {
+					hasAnswer = true;
+					yield { type: "answer", text: part.text };
 				}
 			}
 		}
+
+		if (!hasAnswer) {
+			throw new Error("AI response did not contain an answer");
+		}
 	} else {
-		// === MODE PERSONAL ===
 		const incomeStr = profile?.monthly_income
 			? `${profile.currency || "IDR"} ${profile.monthly_income.toLocaleString("id-ID")}`
 			: "belum diatur";
 		const goalStr = profile?.financial_goal || "belum diatur";
 		const riskStr = profile?.risk_profile || "belum diatur";
+		const query = conversation.at(-1)?.parts?.[0]?.text;
+		if (!query) {
+			throw new Error("A user message is required for personal chat");
+		}
 
-		const query = conversation[conversation.length - 1]?.parts?.[0].text;
-		const historyChat = conversation.slice(0, -1);
+		const historyChat = withoutThoughtParts(conversation.slice(0, -1));
 		const ai = createAI();
 
 		const contents: Content[] = [
@@ -199,12 +231,13 @@ export async function* handleChatStreaming(
 			},
 		];
 
-		let running = true;
-		let iterate = 1;
-		while (running) {
-			iterate++;
+		for (
+			let functionCallRound = 0;
+			functionCallRound <= MAX_FUNCTION_CALL_ROUNDS;
+			functionCallRound++
+		) {
 			const response = await ai.models.generateContentStream({
-				model: "gemini-3.5-flash-lite",
+				model: CHAT_MODEL,
 				contents,
 				config: {
 					tools: [{ functionDeclarations: [getTransactionDeclaration] }],
@@ -222,66 +255,73 @@ export async function* handleChatStreaming(
 
 			const modelParts: Part[] = [];
 			const functionCalls: FunctionCall[] = [];
+			let hasAnswer = false;
 
 			for await (const chunk of response) {
-				const parts = chunk.candidates?.[0]?.content?.parts || [];
+				const parts = chunk.candidates?.[0]?.content?.parts ?? [];
 
-				if (parts) {
-					for (const part of parts) {
-						modelParts.push(part);
-						if (part.functionCall) {
-							functionCalls.push(part.functionCall);
-						} else if (part.text) {
-							if (part.thought) {
-								if (isThinking) yield `[thought]${part.text}`;
-							} else {
-								yield part.text;
+				for (const part of parts) {
+					modelParts.push(part);
+					if (part.functionCall) {
+						functionCalls.push(part.functionCall);
+					} else if (part.text) {
+						if (part.thought) {
+							if (isThinking) {
+								yield { type: "thought", text: part.text };
 							}
+						} else {
+							hasAnswer = true;
+							yield { type: "answer", text: part.text };
 						}
 					}
 				}
 			}
 
-			if (functionCalls.length > 0) {
-				contents.push({ role: "model", parts: modelParts });
-				const functionResponseParts = await Promise.all(
-					functionCalls.map(async (functionCall) => {
-						const { name, args, id } = functionCall;
-						if (!args) {
-							throw new Error("No arguments provided for action");
-						}
-
-						let resultData = {};
-
-						switch (name) {
-							case "get_transaction":
-								const dataFind = await findEmbedding(
-									JSON.stringify(args),
-									0.3,
-									100,
-								);
-								resultData = dataFind || [];
-								break;
-							default:
-								throw new Error(`Unknown function call`);
-						}
-
-						return {
-							functionResponse: {
-								name,
-								response: { result: resultData },
-								id,
-							},
-						};
-					}),
-				);
-				contents.push({
-					role: "user",
-					parts: functionResponseParts,
-				});
-			} else {
-				running = false;
+			if (functionCalls.length === 0) {
+				if (!hasAnswer) {
+					throw new Error("AI response did not contain an answer");
+				}
+				return;
 			}
+
+			if (functionCallRound === MAX_FUNCTION_CALL_ROUNDS) {
+				throw new Error("Personal chat exceeded the maximum function call rounds");
+			}
+
+			contents.push({ role: "model", parts: modelParts });
+			const functionResponseParts = await Promise.all(
+				functionCalls.map(async (functionCall) => {
+					const { name, args, id } = functionCall;
+					if (!args) {
+						throw new Error("No arguments provided for action");
+					}
+
+					let resultData: Awaited<ReturnType<typeof findEmbedding>>;
+					switch (name) {
+						case "get_transaction":
+							resultData = await findEmbedding(
+								JSON.stringify(args),
+								0.3,
+								100,
+							);
+							break;
+						default:
+							throw new Error(`Unknown function call: ${name}`);
+					}
+
+					return {
+						functionResponse: {
+							name,
+							response: { result: resultData ?? [] },
+							id,
+						},
+					};
+				}),
+			);
+			contents.push({
+				role: "user",
+				parts: functionResponseParts,
+			});
 		}
 	}
 }
