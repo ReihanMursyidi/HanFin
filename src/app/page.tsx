@@ -58,7 +58,7 @@ export default function Home() {
       <main className="flex flex-col items-center justify-center min-h-screen bg-muted/20 p-4">
         <div className='flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500'>
           <CoinsIcon className='text-primary size-20' />
-          <h1 className="mt-4 text-4xl font-bold text-primary">Welcome to Fina</h1>
+          <h1 className="mt-4 text-4xl font-bold text-primary">Welcome to HanFin</h1>
           <p className="mt-2 text-lg text-muted-foreground">
             Your personal finance app with AI
           </p>
@@ -82,13 +82,8 @@ export default function Home() {
             <CoinsIcon className="text-primary size-12" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {isRegister ? 'Create an account' : 'Welcome'}
+            {isRegister ? 'Create an Account' : 'Login to HanFin'}
           </CardTitle>
-          <CardDescription>
-            {isRegister
-              ? 'Enter your email below to create your account'
-              : 'Enter your email and password to login to Fina'}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

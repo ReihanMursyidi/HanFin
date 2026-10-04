@@ -54,7 +54,7 @@ export function AppSidebar() {
             <div className="flex items-center gap-2 px-2">
               <CoinsIcon className="text-primary size-5! group-data-[collapsible=icon]:hidden" />
               <h1 className="text-2xl font-bold text-primary group-data-[collapsible=icon]:hidden">
-                Fina App
+                HanFin
               </h1>
             </div>
           </SidebarMenuItem>

@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Fina',
-  description: 'Your personal finance app with AI'
+  title: 'HanFin - Autonomous AI Finance Agent',
+  description: 'Autonomous AI Finance Agent'
 }
 
 export default function RootLayout({ children }: Readonly<{
