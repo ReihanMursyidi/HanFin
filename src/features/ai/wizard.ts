@@ -1,14 +1,13 @@
 'use server';
 
+import type { Content } from '@google/genai';
 import z from 'zod';
-import { createAI } from './instance';
-
+import { CATEGORIES, transactionSchema } from '@/constants/transaction-constant';
 import {
    createTransaction,
    deleteTransaction,
    updateTransaction
 } from '../transaction/action';
-
 import { findEmbedding } from './embedding';
 import {
    createTransactionDeclaration, 
@@ -16,8 +15,7 @@ import {
    getTransactionDeclaration, 
    updateTransactionDeclaration 
 } from './functionTransaction';
-import { Content } from '@google/genai';
-import { CATEGORIES, transactionSchema } from '@/constants/transaction-constant';
+import { createAI } from './instance';
 
 export async function handleWizardInput(message: string) {
    const contents = `
@@ -141,8 +139,8 @@ export async function handleWizardTools(formData: FormData) {
          },
       });
 
-      if (response.functionCalls && response.functionCalls.length > 0) {
-         if (response.candidates && response.candidates[0]?.content) {
+      if (response.functionCalls?.length > 0) {
+         if (response.candidates?.[0]?.content) {
             contents.push(response.candidates[0].content);
          }
 
@@ -156,7 +154,7 @@ export async function handleWizardTools(formData: FormData) {
                let resultData = {};
 
                switch (name) {
-                  case 'get_transaction':
+                  case 'get_transaction': {
                      const dataFind = await findEmbedding(
                         JSON.stringify(args),
                         0.3,
@@ -164,16 +162,18 @@ export async function handleWizardTools(formData: FormData) {
                      );
                      resultData = dataFind[0] || {};
                      break;
+                  }
 
-                  case 'create_transaction':
+                  case 'create_transaction': {
                      const transaction = transactionSchema.parse(args);
                      if (transaction.amount <= 0) {
                         throw new Error('Cannot create transaction with invalid amount');
                      }
                      await createTransaction(transaction);
                      break;
+                  }
                   
-                  case 'delete_transaction':
+                  case 'delete_transaction': {
                      const data = await findEmbedding(JSON.stringify(args), 0.3, 1);
                      
                      // TAMBAHKAN VALIDASI INI 👇
@@ -184,8 +184,9 @@ export async function handleWizardTools(formData: FormData) {
                      const deletedData = data[0];
                      await deleteTransaction(deletedData.id);
                      break;
+                  }
                      
-                  case 'update_transaction':
+                  case 'update_transaction': {
                      const newData = transactionSchema.parse(args);
 
                      if (newData.amount <= 0) {
@@ -194,6 +195,7 @@ export async function handleWizardTools(formData: FormData) {
    
                      await updateTransaction(`${args.id}`, newData);
                      break;
+                  }
                   default:
                      throw new Error(`Unknown function call`);
                }
@@ -218,4 +220,3 @@ export async function handleWizardTools(formData: FormData) {
       }
    }
 }
-
