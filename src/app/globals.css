@@ -238,7 +238,7 @@
     li {
       @apply list-inside text-wrap;
       ul {
-        list-style-type: circle !important;
+        list-style-type: circle;
         li {
           @apply ml-2 list-inside text-wrap;
         }
