@@ -1,45 +1,42 @@
-import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
-import { 
-   Card, 
-   CardContent, 
-   CardHeader, 
-   CardTitle 
-} from '@/components/ui/card';
-
-import { Field } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-
-import { generateChart, generateImage, generateVideo } from '@/features/ai/generative-content';
-import { cn, convertToIDR } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import Image from 'next/image';
-
-import { 
-   Bar, 
-   BarChart, 
-   Pie, 
-   PieChart, 
-   ResponsiveContainer, 
-   Sector, 
-   Tooltip, 
-   XAxis, 
-   YAxis 
-} from 'recharts';
-import { Controller, useForm } from 'react-hook-form';
-import { useState, KeyboardEvent } from 'react';
-import { toast } from 'sonner';
-import z from 'zod';
-
-import { 
-   ChartPieIcon, 
-   ImageIcon, 
-   Loader2Icon, 
-   Sparkles, 
-   SparklesIcon, 
+import {
+   ChartPieIcon,
+   ImageIcon,
+   Loader2Icon,
+   Sparkles,
+   SparklesIcon,
    VideoIcon
 } from 'lucide-react';
+import Image from 'next/image';
+import type { KeyboardEvent } from 'react';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+   Bar,
+   BarChart,
+   Pie,
+   PieChart,
+   ResponsiveContainer,
+   Sector,
+   Tooltip,
+   XAxis,
+   YAxis
+} from 'recharts';
+import { toast } from 'sonner';
+import z from 'zod';
+import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
+import {
+   Card,
+   CardContent,
+   CardHeader,
+   CardTitle
+} from '@/components/ui/card';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { generateChart, generateImage, generateVideo } from '@/features/ai/generative-content';
+import { cn, convertToIDR } from '@/lib/utils';
 
 const formSchema = z.object({
    request: z.string().min(1, 'Request is required'),
@@ -82,24 +79,27 @@ export default function GenerativeContent() {
    const {mutate, isPending, error} = useMutation({
       mutationFn: async (request: string) => {
          switch(insightType) {
-            case 'chart':
+            case 'chart': {
                const result = await generateChart(request);
                return {...result, type: 'chart'};
+            }
 
-            case 'image':
+            case 'image': {
                const resultImage = await generateImage(request);
                return {
                   type: 'image',
                   data: resultImage,
                };
+            }
 
-            case 'video':
+            case 'video': {
                const resultVideo = await generateVideo(request);
                return {
                   type: 'video',
                   data: resultVideo,
                };
-               
+            }
+
             default:
                return null;
          }
@@ -312,6 +312,7 @@ export default function GenerativeContent() {
                         <video 
                            src={result.data} 
                            controls 
+                           muted
                            className='rounded-xl w-full aspect-video border'
                         >
                            Your browser doesn&apos;t support
