@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from 'clsx';
+import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 /**
@@ -38,5 +38,5 @@ export function formatDate(dateString: string | Date): string {
  */
 export function truncateText(text: string, maxLength: number): string {
    if (text.length <= maxLength) return text;
-   return text.slice(0, maxLength) + '...';
+   return `${text.slice(0, maxLength)}...`;
 }
