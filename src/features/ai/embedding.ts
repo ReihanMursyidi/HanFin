@@ -1,6 +1,5 @@
 'use server';
 
-import { Conversation } from '@/app/types/ai';
 import { createAI } from './instance';
 import { createClient } from '@/lib/supabase/server';
 
@@ -33,8 +32,9 @@ export async function findEmbedding(
    match_threshold?: number,
    match_count?: number,
 ) {
-
    const supabase = await createClient();
+   const { data: { user } } = await supabase.auth.getUser();
+   if (!user) throw new Error('Unauthorized: Harus login untuk mencari transaksi.');
 
    const queryEmbedding = await generateEmbedding(query);
    
@@ -42,6 +42,7 @@ export async function findEmbedding(
       query_embedding: queryEmbedding,
       match_threshold: match_threshold || 0.3,
       match_count: match_count || 15,
+      p_user_id: user.id,
    });
 
    if (error) {

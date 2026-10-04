@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import { Type } from "@google/genai";
 import { findEmbedding } from "./embedding";
@@ -9,25 +9,28 @@ import * as os from "os";
 import * as path from "path";
 
 export async function generateChart(request: string) {
-   const ai = createAI();
+	const ai = createAI();
 
-   const data = await findEmbedding(request, 0.5, 50);
+	const data = await findEmbedding(request, 0.5, 50);
 
-   let contextData = "";
+	let contextData = "";
 
-   if (!data || data.length === 0) {
-      contextData = "No transactions found that are similar or relevant to the request";
-   } else {
-      contextData = data.map((transaction: Transaction) => {
-         return JSON.stringify(transaction);
-      }).join('\n');
-   }
+	if (!data || data.length === 0) {
+		contextData =
+			"No transactions found that are similar or relevant to the request";
+	} else {
+		contextData = data
+			.map((transaction: Transaction) => {
+				return JSON.stringify(transaction);
+			})
+			.join("\n");
+	}
 
-   const contents = {
-      role: 'user',
-      parts: [
-         {
-            text: `
+	const contents = {
+		role: "user",
+		parts: [
+			{
+				text: `
                <role>
                   You are an AI Financial Analyst and data engineering specialist. Your task is to analyze transactions 
                   in <context> and generate a structured JSON configuration to render charts that directly response the user's request.
@@ -55,74 +58,74 @@ export async function generateChart(request: string) {
                   -  Respond strictly with a raw and valid JSON object matching the requested schema.
                   -  DO NOT include markdown code blocks, backticks, or any conversational text.
                </contraints>
-            `
-         },
-      ],
-   };
+            `,
+			},
+		],
+	};
 
-   const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents,
-      config: {
-         responseMimeType: 'application/json',
-         responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-               chartType: {
-                  type: Type.STRING,
-                  enum: ['bar', 'pie'],
-                  description: 'Chart type to render',
-               },
-               data: {
-                  type: Type.ARRAY,
-                  description: 'Array of object for data chart',
-                  items: {
-                     type: Type.OBJECT,
-                     properties: {
-                        name: {type: Type.STRING},
-                        value: {type: Type.NUMBER},
-                     },
-                     required: ['name', 'value'],
-                  },
-               },
-            },
-            required: ['chartType', 'data'],
-         }
-      }
-   });
+	const response = await ai.models.generateContent({
+		model: "gemini-3.5-flash",
+		contents,
+		config: {
+			responseMimeType: "application/json",
+			responseSchema: {
+				type: Type.OBJECT,
+				properties: {
+					chartType: {
+						type: Type.STRING,
+						enum: ["bar", "pie"],
+						description: "Chart type to render",
+					},
+					data: {
+						type: Type.ARRAY,
+						description: "Array of object for data chart",
+						items: {
+							type: Type.OBJECT,
+							properties: {
+								name: { type: Type.STRING },
+								value: { type: Type.NUMBER },
+							},
+							required: ["name", "value"],
+						},
+					},
+				},
+				required: ["chartType", "data"],
+			},
+		},
+	});
 
-   if (!response.text) {
-      throw new Error('Failed to generate chart');
-   }
+	if (!response.text) {
+		throw new Error("Failed to generate chart");
+	}
 
-   const chartData = JSON.parse(response.text);
+	const chartData = JSON.parse(response.text);
 
-   return chartData;
-};
+	return chartData;
+}
 
 export async function generateImage(request: string) {
-   const ai = createAI();
+	const ai = createAI();
 
-   const data = await findEmbedding(request, 0.5, 50);
+	const data = await findEmbedding(request, 0.5, 50);
 
-   let contextData = '';
+	let contextData = "";
 
-   if (!data || data.length === 0) {
-      contextData =
-         'No transactions found that are similar or relevant to the request';
-   } else {
-      contextData = data
-         .map((transaction: Transaction) => {
-            return JSON.stringify(transaction);
-         })
-         .join('\n');
-   }
+	if (!data || data.length === 0) {
+		contextData =
+			"No transactions found that are similar or relevant to the request";
+	} else {
+		contextData = data
+			.map((transaction: Transaction) => {
+				return JSON.stringify(transaction);
+			})
+			.join("\n");
+	}
 
-   const contents = {
-      role: 'user',
-      parts: [
-         {
-            text: `
+	const contents = {
+		role: "user",
+		parts: [
+			{
+				text: `
                <role>
                   You are an AI Financial Analyst and Data illustrator. Your task is to analyze transactions in <context> 
                   and generate an image for infographic and conpectual dashboard in bento grid style that directly response the user's request.
@@ -145,62 +148,63 @@ export async function generateImage(request: string) {
                   Data transaction : ${contextData}
                </context>
             `,
-         },
-      ],
-   };
+			},
+		],
+	};
 
-   const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-image',
-      contents,
-      config: {
-         imageConfig: {
-            aspectRatio: '16:9',
-         },
-      },
-   });
+	const response = await ai.models.generateContent({
+		model: "gemini-3.1-flash-image",
+		contents,
+		config: {
+			imageConfig: {
+				aspectRatio: "16:9",
+			},
+		},
+	});
 
-   const candidates = response.candidates;
-   if (!candidates || candidates.length === 0) {
-      throw new Error('Failed to generate image');
-   }
+	const candidates = response.candidates;
+	if (!candidates || candidates.length === 0) {
+		throw new Error("Failed to generate image");
+	}
 
-   const parts = candidates[0].content?.parts;
-   if (!parts) {
-      throw new Error('Failed to generate image');
-   }
+	const parts = candidates[0].content?.parts;
+	if (!parts) {
+		throw new Error("Failed to generate image");
+	}
 
-   let base64Image = '';
+	let base64Image = "";
 
-   for (const part of parts) {
-      if (part.inlineData) {
-         const imageData = part.inlineData.data;
-         if (imageData) {
-            base64Image = `data:${part.inlineData.mimeType || 'image/png'};base64,${imageData}`;
-         }
-      }
-   }
+	for (const part of parts) {
+		if (part.inlineData) {
+			const imageData = part.inlineData.data;
+			if (imageData) {
+				base64Image = `data:${part.inlineData.mimeType || "image/png"};base64,${imageData}`;
+			}
+		}
+	}
 
-   return base64Image;
+	return base64Image;
 }
 
 export async function generateVideo(request: string) {
-   const ai = createAI();
+	const ai = createAI();
 
-   const data = await findEmbedding(request, 0.5, 50);
+	const data = await findEmbedding(request, 0.5, 50);
 
-   let contextData = '';
+	let contextData = "";
 
-   if (!data || data.length === 0) {
-      contextData = 'No transactions found that are similar or relevant to the request';
-   } else {
-      contextData = data
-         .map((transaction: Transaction) => {
-            return JSON.stringify(transaction);
-         })
-         .join('\n');
-   }
+	if (!data || data.length === 0) {
+		contextData =
+			"No transactions found that are similar or relevant to the request";
+	} else {
+		contextData = data
+			.map((transaction: Transaction) => {
+				return JSON.stringify(transaction);
+			})
+			.join("\n");
+	}
 
-   const contents = `
+	const contents = `
       <role>
          You are an AI Financial Analyst and motion designer. Your task is to analyze transactions in <context> 
          and generate a video for infographic and conpectual dashboard in bento grid style that directly response the user's request.
@@ -225,31 +229,31 @@ export async function generateVideo(request: string) {
       </context>
    `;
 
-   let operation = await ai.models.generateVideos({
-      model: 'veo-3.1-lite-generate-preview',
-      prompt: contents,
-   });
+	let operation = await ai.models.generateVideos({
+		model: "veo-3.1-lite-generate-preview",
+		prompt: contents,
+	});
 
-   while (!operation.done) {
-      await new Promise((resolve) => setTimeout(resolve, 10000));
-      operation = await ai.operations.getVideosOperation({
-         operation: operation,
-      });
-   }
+	while (!operation.done) {
+		await new Promise((resolve) => setTimeout(resolve, 10000));
+		operation = await ai.operations.getVideosOperation({
+			operation: operation,
+		});
+	}
 
-   const generatedVideo = operation.response?.generatedVideos?.[0]?.video;
-   if (!generatedVideo) {
-      throw new Error('Failed to generate video');
-   }
+	const generatedVideo = operation.response?.generatedVideos?.[0]?.video;
+	if (!generatedVideo) {
+		throw new Error("Failed to generate video");
+	}
 
-   const tempPath = path.join(os.tmpdir(), `temp-video-${Date.now()}.mp4`);
+	const tempPath = path.join(os.tmpdir(), `temp-video-${Date.now()}.mp4`);
 
-   await ai.files.download({
-      file: generatedVideo,
-      downloadPath: tempPath,
-   });
+	await ai.files.download({
+		file: generatedVideo,
+		downloadPath: tempPath,
+	});
 
-   const videoBuffer = fs.readFileSync(tempPath);
-   const base64Video = `data:${generatedVideo.mimeType || 'video/mp4'};base64,${videoBuffer.toString('base64')}`;
-   return base64Video;
+	const videoBuffer = fs.readFileSync(tempPath);
+	const base64Video = `data:${generatedVideo.mimeType || "video/mp4"};base64,${videoBuffer.toString("base64")}`;
+	return base64Video;
 }

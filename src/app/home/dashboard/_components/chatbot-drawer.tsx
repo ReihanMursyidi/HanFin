@@ -25,16 +25,36 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { handleChatStreaming } from "@/features/ai/chat";
+import { getFinancialProfile } from "@/features/profile/action";
 import ChatbotTextArea from "./chatbot-textarea";
 import { Conversation } from "@/app/types/ai";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+type FinancialProfile = Awaited<ReturnType<typeof getFinancialProfile>>;
+
 export default function ChatbotDrawer() {
    const chatRef = useRef<HTMLDivElement>(null);
    const [conversation, setConversation] = useState<Conversation[]>([]);
+   const [profile, setProfile] = useState<FinancialProfile>(null);
    
    const [isThinking, setIsThinking] = useState<boolean>(false);
    const [mode, setMode] = useState<'general' | 'personal'>('general');
+
+   useEffect(() => {
+      let isMounted = true;
+
+      getFinancialProfile()
+         .then((financialProfile) => {
+            if (isMounted) setProfile(financialProfile);
+         })
+         .catch((error: unknown) => {
+            console.error('Error loading financial profile:', error);
+         });
+
+      return () => {
+         isMounted = false;
+      };
+   }, []);
 
    const { mutate: handleChatMutation, isPending } = useMutation({
       mutationFn: async ({ isThinking, chatHistory }: { isThinking: boolean; chatHistory: Conversation[] }) => {
@@ -51,6 +71,7 @@ export default function ChatbotDrawer() {
 
             const response = await handleChatStreaming(
                chatHistory,
+               profile,
                isThinking,
                mode,
             );
@@ -90,6 +111,7 @@ export default function ChatbotDrawer() {
 
             const response = await handleChatStreaming(
                chatHistory,
+               profile,
                isThinking,
                mode,
             );
