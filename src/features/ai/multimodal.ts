@@ -1,30 +1,33 @@
-'use server';
+"use server";
 
-import { Content } from "@google/genai";
+import type { Content } from "@google/genai";
+import {
+	CATEGORIES,
+	transactionSchema,
+} from "@/constants/transaction-constant";
 import { createAI } from "./instance";
-import { CATEGORIES, transactionSchema } from "@/constants/transaction-constant";
 
 export async function extractReceiptData(formData: FormData) {
-   const file = formData.get('file') as File;
-   if(!file) {
-      throw new Error('No file uploaded');
-   }
+	const file = formData.get("file") as File;
+	if (!file) {
+		throw new Error("No file uploaded");
+	}
 
-   const mimeType = file.type;
-   const base64Data = Buffer.from(await file.arrayBuffer()).toString('base64');
-   const ai = createAI();
-   const contents : Content[] = [
-      {
-         role: 'user',
-         parts: [
-            {
-               inlineData : {
-                  mimeType,
-                  data: base64Data,
-               }
-            },
-            {
-               text: `
+	const mimeType = file.type;
+	const base64Data = Buffer.from(await file.arrayBuffer()).toString("base64");
+	const ai = createAI();
+	const contents: Content[] = [
+		{
+			role: "user",
+			parts: [
+				{
+					inlineData: {
+						mimeType,
+						data: base64Data,
+					},
+				},
+				{
+					text: `
                   <role>
                      You are an AI finance assitant, who can extract transaction details from receipt.
                   </role>
@@ -34,7 +37,7 @@ export async function extractReceiptData(formData: FormData) {
                      - "amount": a number representing the cost (positive). Use 0 if not provided.
                      - "type": type of transaction, either 'income' or 'expense'.
                      - "category": choose the most appropriate category from this exact list:
-                                 ${CATEGORIES.join(',')}.
+                                 ${CATEGORIES.join(",")}.
                      - "description": a short string describing the transaction, first letter capitalized.
                      - "date": date of transaction in YYYY-MM-DD format.
                               Assume the current date if relative terms like 'today' or 'just now'. If not define use current date.
@@ -46,25 +49,25 @@ export async function extractReceiptData(formData: FormData) {
                         Respond with only the raw JSON object, no markdown blocks, no text before or after.
                   </outputFormat>
                `,
-            },
-         ]
-      }
-   ];
+				},
+			],
+		},
+	];
 
-   const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents,
-   });
+	const response = await ai.models.generateContent({
+		model: "gemini-3.5-flash",
+		contents,
+	});
 
-   if (!response.text) {
-      throw new Error('AI cannot generate data');
-   }
+	if (!response.text) {
+		throw new Error("AI cannot generate data");
+	}
 
-   const transaction = transactionSchema.parse(JSON.parse(`${response.text}`));
+	const transaction = transactionSchema.parse(JSON.parse(`${response.text}`));
 
-   return transaction;
+	return transaction;
 
-   // Save to DB
-   // await createTransaction(transaction);
-   // return 'Create transaction success';
+	// Save to DB
+	// await createTransaction(transaction);
+	// return 'Create transaction success';
 }
