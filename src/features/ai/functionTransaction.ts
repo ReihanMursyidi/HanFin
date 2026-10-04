@@ -1,5 +1,6 @@
+import type { FunctionDeclaration } from "@google/genai";
+import { Type } from "@google/genai";
 import { CATEGORIES } from "@/constants/transaction-constant";
-import { FunctionDeclaration, Type } from "@google/genai";
 
 const transactionProperties = {
    id: {
