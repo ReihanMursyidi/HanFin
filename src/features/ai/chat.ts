@@ -13,6 +13,19 @@ import {
 } from '@google/genai';
 
 const MAX_FUNCTION_CALL_ROUNDS = 5;
+const CHAT_MODEL = 'gemini-2.5-flash';
+
+export type ChatStreamChunk = {
+   type: 'thought' | 'answer';
+   text: string;
+};
+
+function withoutThoughtParts(conversation: Content[]): Content[] {
+   return conversation.flatMap((content) => {
+      const parts = content.parts?.filter((part) => !part.thought) ?? [];
+      return parts.length > 0 ? [{ ...content, parts }] : [];
+   });
+}
 
 const SYSTEM_INSTRUCTION = `
    [Role]
@@ -69,7 +82,7 @@ export async function handleChat(
 ) {
    const ai = createAI();
    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: CHAT_MODEL,
       contents: [...conversation],
       config: {
          thinkingConfig: {
@@ -107,8 +120,8 @@ export async function handleChat(
 async function generalChat(conversation: Content[], isThinking: boolean) {
    const ai = createAI();
    const response = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
-      contents: [...conversation],
+      model: CHAT_MODEL,
+      contents: withoutThoughtParts(conversation),
       config: {
          thinkingConfig: {
             includeThoughts: isThinking,
@@ -131,34 +144,34 @@ async function generalChat(conversation: Content[], isThinking: boolean) {
 }
 
 export async function* handleChatStreaming(
-   conversation: Content[],
-   isThinking: boolean,
-   mode: 'general' | 'personal',
-) {
+  conversation: Content[],
+  isThinking: boolean,
+  mode: 'general' | 'personal',
+): AsyncGenerator<ChatStreamChunk> {
    if (mode === 'general') {
       const response = await generalChat(conversation, isThinking);
+      let hasAnswer = false;
 
-      if (isThinking) {
-         for await (const chunk of response) {
-            const parts = chunk.candidates?.[0]?.content?.parts;
-            if (parts) {
-               for (const part of parts) {
-                  if (!part.text) {
-                     continue;
-                  } else if (part.thought) {
-                     yield `[thought]${part.text}`;
-                  } else {
-                     yield part.text;
-                  }
-               }
+      for await (const chunk of response) {
+         const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+         if (parts.length === 0 && chunk.text) {
+            hasAnswer = true;
+            yield { type: 'answer', text: chunk.text };
+         }
+
+         for (const part of parts) {
+            if (!part.text) continue;
+            if (part.thought) {
+               if (isThinking) yield { type: 'thought', text: part.text };
+            } else {
+               hasAnswer = true;
+               yield { type: 'answer', text: part.text };
             }
          }
-      } else {
-         for await (const chunk of response) {
-            if (chunk.text) {
-               yield chunk.text;
-            }
-         }
+      }
+
+      if (!hasAnswer) {
+         throw new Error('AI response did not contain an answer');
       }
    } else {
       const query = conversation.at(-1)?.parts?.[0]?.text;
@@ -166,7 +179,7 @@ export async function* handleChatStreaming(
          throw new Error('A user message is required for personal chat');
       }
 
-      const historyChat = conversation.slice(0, -1);
+      const historyChat = withoutThoughtParts(conversation.slice(0, -1));
       const ai = createAI();
 
       const contents: Content[] = [
@@ -206,9 +219,13 @@ export async function* handleChatStreaming(
          },
       ];
 
-      for (let iteration = 0; iteration < MAX_FUNCTION_CALL_ROUNDS; iteration++) {
+      for (
+         let functionCallRound = 0;
+         functionCallRound <= MAX_FUNCTION_CALL_ROUNDS;
+         functionCallRound++
+      ) {
          const response = await ai.models.generateContentStream({
-            model: 'gemini-3.5-flash',
+            model: CHAT_MODEL,
             contents,
             config: {
                tools: [{ functionDeclarations: [getTransactionDeclaration] }],
@@ -226,6 +243,7 @@ export async function* handleChatStreaming(
 
          const modelParts: Part[] = [];
          const functionCalls: FunctionCall[] = [];
+         let hasAnswer = false;
 
          for await (const chunk of response) {
             const parts = chunk.candidates?.[0]?.content?.parts || [];
@@ -236,16 +254,24 @@ export async function* handleChatStreaming(
                   functionCalls.push(part.functionCall);
                } else if (part.text) {
                   if (part.thought) {
-                     if (isThinking) yield `[thought]${part.text}`;
+                     if (isThinking) yield { type: 'thought', text: part.text };
                   } else {
-                     yield part.text;
+                     hasAnswer = true;
+                     yield { type: 'answer', text: part.text };
                   }
                }
             }
          }
 
          if (functionCalls.length === 0) {
+            if (!hasAnswer) {
+               throw new Error('AI response did not contain an answer');
+            }
             return;
+         }
+
+         if (functionCallRound === MAX_FUNCTION_CALL_ROUNDS) {
+            throw new Error('Personal chat exceeded the maximum function call rounds');
          }
 
          contents.push({ role: 'model', parts: modelParts });
@@ -285,6 +311,5 @@ export async function* handleChatStreaming(
          });
       }
 
-      throw new Error('Personal chat exceeded the maximum function call rounds');
    }
 }

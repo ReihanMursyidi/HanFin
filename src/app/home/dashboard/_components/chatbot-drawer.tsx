@@ -37,88 +37,71 @@ export default function ChatbotDrawer() {
    const [mode, setMode] = useState<'general' | 'personal'>('general');
 
    const { mutate: handleChatMutation, isPending } = useMutation({
-      mutationFn: async ({ isThinking, chatHistory }: { isThinking: boolean; chatHistory: Conversation[] }) => {
-         if (isThinking) {
-            setConversation((prev) => [
-               ...prev,
-               { 
-                  role: 'model', 
-                  parts: [
-                     { thought: true, text: '' },
-                     { text: '' }],
-               },
-            ]);
+      mutationFn: async ({
+         isThinking,
+         chatHistory,
+         mode,
+      }: {
+         isThinking: boolean;
+         chatHistory: Conversation[];
+         mode: 'general' | 'personal';
+      }) => {
+         setConversation((prev) => [
+            ...prev,
+            {
+               role: 'model',
+               parts: isThinking
+                  ? [{ thought: true, text: '' }, { text: '' }]
+                  : [{ text: '' }],
+            },
+         ]);
 
-            const response = await handleChatStreaming(
-               chatHistory,
-               isThinking,
-               mode,
-            );
+         const response = await handleChatStreaming(chatHistory, isThinking, mode);
 
-            for await (const chunk of response) {
-               setConversation((prev) => {
-                  const newConversation = [...prev];
-                  const lastIndex = newConversation.length - 1;
+         for await (const chunk of response) {
+            setConversation((prev) => {
+               const lastIndex = prev.length - 1;
+               const message = prev[lastIndex];
+               if (message?.role !== 'model') return prev;
 
-                  const parts = newConversation[lastIndex].parts;
+               const partIndex = isThinking
+                  ? chunk.type === 'thought' ? 0 : 1
+                  : 0;
+               const parts = [...message.parts];
+               const part = parts[partIndex];
+               parts[partIndex] = {
+                  ...part,
+                  text: `${part?.text ?? ''}${chunk.text}`,
+               };
 
-                  newConversation[lastIndex] = {
-                     ...newConversation[lastIndex],
-                     parts: [
-                        {
-                           ...parts[0],
-                           text: chunk.startsWith('[thought]')
-                              ? parts[0].text + chunk.replace('[thought]', '')
-                              : parts[0].text,
-                        },
-                        {
-                           text: !chunk.startsWith('[thought]')
-                              ? parts[1].text + chunk
-                              : parts[1].text,
-                        },
-                     ],
-                  };
-                  return newConversation;
-               });
-            }
-            return response;
-         } else {
-            setConversation((prev) => [
-               ...prev,
-               { role: 'model', parts: [{ text: '' }] },
-            ]);
-
-            const response = await handleChatStreaming(
-               chatHistory,
-               isThinking,
-               mode,
-            );
-
-            for await (const chunk of response) {
-               setConversation((prev) => {
-                  const newConversation = [...prev];
-                  const lastIndex = newConversation.length - 1;
-
-                  newConversation[lastIndex] = {
-                     ...newConversation[lastIndex],
-                     parts: [
-                        { text: newConversation[lastIndex].parts[0].text + chunk },
-                     ],
-                  };
-                  
-                  return newConversation;
-               });
-            }
-            return response;
+               const next = [...prev];
+               next[lastIndex] = { ...message, parts };
+               return next;
+            });
          }
       },
 
-      onError: (error) => {
-         const botMessage = {
-            role: 'model',
-            parts: [{ text: 'An unexpected error has occured: ' + error.message }],
-         };
-         setConversation((prev) => [...prev, botMessage]);
+      onError: (error, variables) => {
+         const errorText = `An unexpected error has occurred: ${error.message}`;
+         setConversation((prev) => {
+            const lastIndex = prev.length - 1;
+            const message = prev[lastIndex];
+            if (message?.role !== 'model') {
+               return [...prev, { role: 'model', parts: [{ text: errorText }] }];
+            }
+
+            const answerIndex = variables.isThinking ? 1 : 0;
+            const parts = [...message.parts];
+            const answer = parts[answerIndex];
+            parts[answerIndex] = {
+               ...answer,
+               text: answer?.text ? `${answer.text}\n\n${errorText}` : errorText,
+            };
+
+            const next = [...prev];
+            next[lastIndex] = { ...message, parts };
+            return next;
+         });
       },
    });
 
@@ -142,7 +125,7 @@ export default function ChatbotDrawer() {
          historyForAI.unshift(msg);
          currentCharCount += msgLength;
       }
-      handleChatMutation({ isThinking, chatHistory: historyForAI });
+      handleChatMutation({ isThinking, chatHistory: historyForAI, mode });
    }
 
    useEffect(() => {
