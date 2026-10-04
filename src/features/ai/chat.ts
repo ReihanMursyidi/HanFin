@@ -1,16 +1,18 @@
 'use server';
 
 import { createAI } from '@/features/ai/instance';
-import { Conversation } from '@/app/types/ai';
-import { findEmbedding, generateEmbedding } from './embedding';
+import type { Conversation } from '@/app/types/ai';
+import { findEmbedding } from './embedding';
 import { getTransactionDeclaration } from './functionTransaction';
-import { 
-   Content, 
-   FunctionCall, 
-   HarmBlockThreshold, 
-   HarmCategory, 
-   Part 
+import {
+   HarmBlockThreshold,
+   HarmCategory,
+   type Content,
+   type FunctionCall,
+   type Part,
 } from '@google/genai';
+
+const MAX_FUNCTION_CALL_ROUNDS = 5;
 
 const SYSTEM_INSTRUCTION = `
    [Role]
@@ -84,7 +86,7 @@ export async function handleChat(
    if (isThinking) {
       const parts = response.candidates?.[0]?.content?.parts;
       if (!parts) {
-         return;
+         throw new Error('AI response did not contain any content');
       }
 
       for (const part of parts) {
@@ -102,7 +104,7 @@ export async function handleChat(
    return result;
 }
 
-async function generalChat(conversation: Content[], isThinking?: boolean) {
+async function generalChat(conversation: Content[], isThinking: boolean) {
    const ai = createAI();
    const response = await ai.models.generateContentStream({
       model: 'gemini-2.5-flash',
@@ -159,7 +161,11 @@ export async function* handleChatStreaming(
          }
       }
    } else {
-      const query = conversation[conversation.length - 1]?.parts?.[0].text;
+      const query = conversation.at(-1)?.parts?.[0]?.text;
+      if (!query) {
+         throw new Error('A user message is required for personal chat');
+      }
+
       const historyChat = conversation.slice(0, -1);
       const ai = createAI();
 
@@ -200,10 +206,7 @@ export async function* handleChatStreaming(
          },
       ];
 
-      let running = true;
-      let iterate = 1;
-      while (running) {
-         iterate++;
+      for (let iteration = 0; iteration < MAX_FUNCTION_CALL_ROUNDS; iteration++) {
          const response = await ai.models.generateContentStream({
             model: 'gemini-3.5-flash',
             contents,
@@ -227,62 +230,61 @@ export async function* handleChatStreaming(
          for await (const chunk of response) {
             const parts = chunk.candidates?.[0]?.content?.parts || [];
 
-            if (parts) {
-               for (const part of parts) {
-                  modelParts.push(part);
-                  if (part.functionCall) {
-                     functionCalls.push(part.functionCall);
-                  } else if (part.text) {
-                     if (part.thought) {
-                        if (isThinking) yield `[thought]${part.text}`;
-                     } else {
-                        yield part.text;
-                     }
-                  } 
+            for (const part of parts) {
+               modelParts.push(part);
+               if (part.functionCall) {
+                  functionCalls.push(part.functionCall);
+               } else if (part.text) {
+                  if (part.thought) {
+                     if (isThinking) yield `[thought]${part.text}`;
+                  } else {
+                     yield part.text;
+                  }
                }
             }
          }
 
-         if (functionCalls.length > 0) {
-            contents.push({ role: 'model', parts: modelParts });
-            const functionResponseParts = await Promise.all(
-               functionCalls.map(async (functionCall) => {
-                  const { name, args, id } = functionCall;
-                  if (!args) {
-                     throw new Error('No arguments provided for action');
-                  }
-   
-                  let resultData = {};
-   
-                  switch (name) {
-                     case 'get_transaction':
-                        const dataFind = await findEmbedding(
-                           JSON.stringify(args),
-                           0.3,
-                           100
-                        );
-                        resultData = dataFind || [];
-                        break;
-                     default:
-                        throw new Error(`Unknown function call`);
-                  }
-   
-                  return {
-                     functionResponse: {
-                        name,
-                        response: { result: resultData },
-                        id,
-                     },
-                  };
-               }),
-            );
-            contents.push({
-               role: 'user',
-               parts: functionResponseParts,
-            });
-         } else {
-            running = false;
+         if (functionCalls.length === 0) {
+            return;
          }
+
+         contents.push({ role: 'model', parts: modelParts });
+         const functionResponseParts = await Promise.all(
+            functionCalls.map(async (functionCall) => {
+               const { name, args, id } = functionCall;
+               if (!args) {
+                  throw new Error('No arguments provided for action');
+               }
+
+               let resultData: Awaited<ReturnType<typeof findEmbedding>>;
+
+               switch (name) {
+                  case 'get_transaction':
+                     resultData = await findEmbedding(
+                        JSON.stringify(args),
+                        0.3,
+                        100,
+                     );
+                     break;
+                  default:
+                     throw new Error(`Unknown function call: ${name}`);
+               }
+
+               return {
+                  functionResponse: {
+                     name,
+                     response: { result: resultData ?? [] },
+                     id,
+                  },
+               };
+            }),
+         );
+         contents.push({
+            role: 'user',
+            parts: functionResponseParts,
+         });
       }
+
+      throw new Error('Personal chat exceeded the maximum function call rounds');
    }
 }
