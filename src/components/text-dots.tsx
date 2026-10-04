@@ -35,18 +35,20 @@ function TextDots({
       >
         <span>{children}</span>
         <span aria-hidden="true" className="inline-flex">
-          {Array.from({ length: dotCount }, (_, index) => (
-            <span
-              key={index}
-              style={{
-                animation:
-                  "loading-ui-text-dots var(--duration, 1.4s) infinite",
-                animationDelay: `calc(var(--delay, 0.2s) * ${index + 1})`,
-              }}
-            >
-              .
-            </span>
-          ))}
+          {Array.from({ length: dotCount }, (_, index) => index + 1).map(
+            (delay) => (
+              <span
+                key={delay}
+                style={{
+                  animation:
+                    "loading-ui-text-dots var(--duration, 1.4s) infinite",
+                  animationDelay: `calc(var(--delay, 0.2s) * ${delay})`,
+                }}
+              >
+                .
+              </span>
+            ),
+          )}
         </span>
       </span>
     </>
