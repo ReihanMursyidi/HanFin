@@ -1,6 +1,6 @@
 'use server';
 
-import { Transaction } from '@/app/types/transaction';
+import type { Transaction } from '@/app/types/transaction';
 import { createClient } from '@/lib/supabase/server';
 import { generateEmbedding } from '../ai/embedding';
 
@@ -76,7 +76,7 @@ async function handleEmbedding(
    try {
       embeddingVector = await generateEmbedding(embeddingText);
    } catch(error) {
-      throw new Error('Failed to generate embedding: ' + (error instanceof Error ? error.message : String(error)));
+      throw new Error(`Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`);
    }
 
    return embeddingVector;
