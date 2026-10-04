@@ -1,10 +1,10 @@
 'use client';
 
-import { logoutUser } from "@/features/auth/action";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { logoutUser } from "@/features/auth/action";
 
 interface IdleTimerProps {
    timeoutMinutes?: number;
@@ -40,7 +40,9 @@ export function IdleTimer({ timeoutMinutes = 15 }: IdleTimerProps) {
       const events = ['mousemove', 'keydown', 'wheel', 'mousedown', 'touchstart', 'scroll'];
       
       // Pasang pendeteksi ke seluruh window browser
-      events.forEach((event) => window.addEventListener(event, resetTimer));
+      events.forEach((event) => {
+         window.addEventListener(event, resetTimer);
+      });
 
       // Mulai hitung mundur saat komponen di-load
       resetTimer();
@@ -48,7 +50,9 @@ export function IdleTimer({ timeoutMinutes = 15 }: IdleTimerProps) {
       // Bersihkan detektor saat user pindah halaman
       return () => {
          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-         events.forEach((event) => window.removeEventListener(event, resetTimer));
+         events.forEach((event) => {
+            window.removeEventListener(event, resetTimer);
+         });
       };
    }, [queryClient, router, timeoutMinutes]);
 
