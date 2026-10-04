@@ -1,5 +1,5 @@
 {
-  "name": "fina-app",
+  "name": "hanfin",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -38,6 +38,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",
