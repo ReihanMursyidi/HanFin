@@ -1,8 +1,15 @@
-import { ENVIRONMENT } from '@/config/environment';
 import { createServerClient } from '@supabase/ssr';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { ENVIRONMENT } from '@/config/environment';
 
 export const supabaseProxy = async (request: NextRequest) => {
+   const supabaseUrl = ENVIRONMENT.supabaseUrl;
+   const supabaseKey = ENVIRONMENT.supabaseKey;
+   if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase URL and publishable key must be configured');
+   }
+
    let supabaseResponse = NextResponse.next({
       request: {
          headers: request.headers,
@@ -10,23 +17,23 @@ export const supabaseProxy = async (request: NextRequest) => {
    });
 
    const supabase = createServerClient(
-      ENVIRONMENT.supabaseUrl!,
-      ENVIRONMENT.supabaseKey!,
+      supabaseUrl,
+      supabaseKey,
       {
          cookies: {
             getAll() {
                return request.cookies.getAll();
             },
             setAll(cookiesToSet) {
-               cookiesToSet.forEach(({ name, value }) =>
-                  request.cookies.set(name, value)   
-               );
-               supabaseResponse = NextResponse.next({
-                  request
+               cookiesToSet.forEach(({ name, value }) => {
+                  request.cookies.set(name, value);
                });
-               cookiesToSet.forEach(({ name, value, options }) =>
-                  supabaseResponse.cookies.set(name, value, options),
-               );
+               supabaseResponse = NextResponse.next({
+                  request,
+               });
+               cookiesToSet.forEach(({ name, value, options }) => {
+                  supabaseResponse.cookies.set(name, value, options);
+               });
             }
          }
       }
