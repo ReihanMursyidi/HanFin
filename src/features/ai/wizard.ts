@@ -139,13 +139,14 @@ export async function handleWizardTools(formData: FormData) {
          },
       });
 
-      if (response.functionCalls?.length > 0) {
+      const functionCalls = response.functionCalls;
+      if (functionCalls && functionCalls.length > 0) {
          if (response.candidates?.[0]?.content) {
             contents.push(response.candidates[0].content);
          }
 
          const functionResponseParts = await Promise.all(
-            response.functionCalls.map(async (functionCall) => {
+            functionCalls.map(async (functionCall) => {
                const {name, args, id} = functionCall;
                if (!args) {
                   throw new Error('No arguments provided for action');
