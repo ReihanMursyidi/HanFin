@@ -1,19 +1,18 @@
 'use client';
 
-import { KeyboardEvent, useRef, useState } from 'react';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { Loader2Icon, MicIcon, SendIcon, SparklesIcon, SquareIcon } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import Markdown from 'react-markdown';
 import { toast } from 'sonner';
 import z from 'zod';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { handleWizardTools } from '@/features/ai/wizard';
-import Markdown from 'react-markdown';
 
 const formSchema = z.object({
    message: z.string().min(1, 'Message is required'),
@@ -85,7 +84,9 @@ export default function WizardInput({ refetch }: { refetch: () => void }) {
             formData.append('file', audioBlob);
             mutate(formData);
 
-            stream.getTracks().forEach((t) => t.stop());
+            stream.getTracks().forEach((t) => {
+               t.stop();
+            });
          };
 
          mediaRecorder.start();
