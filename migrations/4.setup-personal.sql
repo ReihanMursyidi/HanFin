@@ -4,8 +4,12 @@ CREATE TABLE public.user_profiles (
   currency TEXT DEFAULT 'IDR',
   monthly_income NUMERIC DEFAULT 0,
   financial_goal TEXT,
-  risk_profile TEXT,
+  risk_profile TEXT, -- (Low, Medium, High) -> Cocok untuk varian Pro (Stocks/Crypto)
   is_onboarded BOOLEAN DEFAULT FALSE,
+  marital_status TEXT DEFAULT 'Lajang',
+  dependents INTEGER DEFAULT 0,
+  current_emergency_fund NUMERIC DEFAULT 0,
+  profession TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

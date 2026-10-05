@@ -3,12 +3,20 @@ import { Geist, Geist_Mono, Montserrat, Noto_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import QueryProvider from '@/providers/query-client';
+import QueryProvider from "@/providers/query-client";
 import "./globals.css";
 
-const montserratHeading = Montserrat({subsets:['latin'],variable:'--font-heading'});
+const montserratHeading = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-heading",
+});
 
-const notoSans = Noto_Sans({subsets:['latin'],variable:'--font-sans'});
+const notoSans = Noto_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-noto-sans",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,11 +29,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'HanFin - Autonomous AI Finance Agent',
-  description: 'Autonomous AI Finance Agent'
-}
+  title: "HanFin - Autonomous AI Finance Agent",
+  description: "Autonomous AI Finance Agent",
+};
 
-export default function RootLayout({ children }: Readonly<{
+export default function RootLayout({
+  children,
+}: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
@@ -33,12 +43,18 @@ export default function RootLayout({ children }: Readonly<{
       lang="en"
       suppressHydrationWarning
       className={cn(
-                  'h-full', 'antialiased', geistSans.variable,
-                  geistMono.variable, 'font-sans', "font-sans",
-                  notoSans.variable, montserratHeading.variable
-                )}
+        "h-full",
+        "antialiased",
+        geistSans.variable,
+        geistMono.variable,
+        notoSans.variable,
+        montserratHeading.variable,
+      )}
     >
-      <body className="flex flex-col min-h-full custom-scrollbar" suppressHydrationWarning>
+      <body
+        className="flex flex-col min-h-full custom-scrollbar"
+        suppressHydrationWarning
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
