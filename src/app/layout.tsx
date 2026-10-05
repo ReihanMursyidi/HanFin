@@ -1,11 +1,5 @@
 import type { Metadata } from "next";
-import {
-  Geist,
-  Geist_Mono,
-  Montserrat,
-  Noto_Sans,
-  Outfit,
-} from "next/font/google";
+import { Geist, Geist_Mono, Noto_Sans, Outfit } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";

@@ -128,35 +128,37 @@ export function FinancialProfileModal({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="sm:max-w-125 max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle>Konteks AI & Personalisasi</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-131.25 p-0 overflow-hidden gap-0">
+        <DialogHeader className="p-6 border-b bg-muted/10">
+          <DialogTitle className="text-xl">
+            Konteks AI & Personalisasi
+          </DialogTitle>
+          <DialogDescription className="mt-1.5">
             Beritahu AI kondisi keuanganmu agar HanFin bisa memberikan analisis
             yang akurat.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh] px-6">
+        <ScrollArea className="max-h-[60vh]">
           <form
             id="profile-form"
             onSubmit={handleSubmit}
-            className="space-y-4 py-4"
+            className="space-y-5 p-6"
           >
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Profesi</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-2.5">
+                <Label className="text-sm font-medium">Profesi</Label>
                 <Input
                   required
                   value={formData.profession}
                   onChange={(e) =>
                     handleInputChange("profession", e.target.value)
                   }
-                  placeholder="Misal: Freelance Developer"
+                  placeholder="Misal: Software Developer"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Mata Uang</Label>
+              <div className="space-y-2.5">
+                <Label className="text-sm font-medium">Mata Uang</Label>
                 <Select
                   value={formData.currency}
                   onValueChange={(val) => handleInputChange("currency", val)}
@@ -172,9 +174,9 @@ export function FinancialProfileModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Status Pernikahan</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-2.5">
+                <Label className="text-sm font-medium">Status Pernikahan</Label>
                 <Select
                   value={formData.marital_status}
                   onValueChange={(val) =>
@@ -190,8 +192,9 @@ export function FinancialProfileModal({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Jumlah Tanggungan</Label>
+
+              <div className="space-y-2.5">
+                <Label className="text-sm font-medium">Jumlah Tanggungan</Label>
                 <Input
                   type="number"
                   min="0"
@@ -201,15 +204,16 @@ export function FinancialProfileModal({
                     handleInputChange("dependents", e.target.value)
                   }
                 />
-                <p className="text-[10px] text-muted-foreground leading-tight">
-                  Berapa banyak orang yang hidupnya bergantung pada gajimu?
-                  (Istri, anak, orang tua, dll).
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Jumlah orang yang bergantung pada gajimu (Istri, anak, dll).
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Rata-rata Pendapatan Bulanan</Label>
+            <div className="space-y-2.5">
+              <Label className="text-sm font-medium">
+                Rata-rata Pendapatan Bulanan
+              </Label>
               <Input
                 type="number"
                 required
@@ -217,10 +221,11 @@ export function FinancialProfileModal({
                 onChange={(e) =>
                   handleInputChange("monthly_income", e.target.value)
                 }
+                placeholder="Contoh: 15000000"
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <Label>Total Dana Darurat Saat Ini</Label>
               <Input
                 type="number"
@@ -233,8 +238,10 @@ export function FinancialProfileModal({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Tujuan Keuangan (Spesifik)</Label>
+            <div className="space-y-2.5">
+              <Label className="text-sm font-medium">
+                Tujuan Keuangan (Spesifik)
+              </Label>
               <Input
                 required
                 value={formData.financial_goal}
@@ -245,21 +252,20 @@ export function FinancialProfileModal({
               />
             </div>
 
-            <div className="space-y-2 p-3 bg-primary/10 rounded-lg border border-primary/20 transition-all">
-              <Label className="flex items-center gap-2 text-primary">
+            <div className="space-y-3 p-4 bg-primary/5 rounded-xl border border-primary/20 transition-all">
+              <Label className="flex items-center gap-2 text-primary font-semibold">
                 <Sparkles
                   className={`size-4 ${isAutoCalculating ? "animate-spin" : ""}`}
                 />
-                Rekomendasi Profil Risiko (Otomatis)
+                Rekomendasi Profil Risiko
               </Label>
-              {/* Yang ini tetap pakai setFormData biasa karena manual override dari user */}
               <Select
                 value={formData.risk_profile}
                 onValueChange={(val) =>
                   setFormData({ ...formData, risk_profile: val })
                 }
               >
-                <SelectTrigger className="bg-background">
+                <SelectTrigger className="shadow-sm border-primary/30">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -272,19 +278,20 @@ export function FinancialProfileModal({
                   <SelectItem value="Agresif">Agresif (Siap Rugi)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Dihitung otomatis saat kamu mengubah form di atas. Kamu tetap
-                bisa mengubahnya manual jika dirasa kurang pas.
+              <p className="text-xs text-muted-foreground/80 leading-snug">
+                Dihitung otomatis saat kamu mengubah form di atas. Kamu bisa
+                mengubahnya manual jika dirasa kurang pas.
               </p>
             </div>
           </form>
         </ScrollArea>
 
-        <div className="p-6 pt-2 border-t mt-2">
+        <div className="p-4 sm:p-4 border-t bg-muted/10 flex justify-end">
           <Button
             type="submit"
             form="profile-form"
-            className="w-full"
+            className="w-full sm:w-auto font-medium"
+            size="lg"
             disabled={loading}
           >
             {loading
