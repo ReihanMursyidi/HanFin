@@ -50,7 +50,7 @@
 
 :root {
   /* Surface & Typography (Light Mode) */
-  --background: #f8fbff; /* Putih dengan sentuhan biru es (Ice Blue) */
+  --background: #eef2f7; /* Abu-biru lembut agar lebih nyaman di mata */
   --foreground: #0f2855; /* Navy sebagai warna teks utama */
   --card: #ffffff;
   --card-foreground: #0f2855;
@@ -68,9 +68,7 @@
   --muted-foreground: #5c8ae6; /* Biru pudar untuk teks sekunder */
   --accent: #e6f0ff;
   --accent-foreground: #0f2855;
-
-  /* UI Boundaries & Interactions */
-  --destructive: #ef4444; 
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #cce0ff; /* Garis batas biru muda */
   --input: #cce0ff;
@@ -112,7 +110,7 @@
   /* Secondary & Accent Palette */
   --secondary: #1f4faa; /* Mid-tone untuk elemen sekunder */
   --secondary-foreground: #ffffff;
-  --muted: #163673; 
+  --muted: #163673;
   --muted-foreground: #80adff;
   --accent: #1f4faa;
   --accent-foreground: #ffffff;

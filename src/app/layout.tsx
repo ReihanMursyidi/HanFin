@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Montserrat, Noto_Sans } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Montserrat,
+  Noto_Sans,
+  Outfit,
+} from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import QueryProvider from "@/providers/query-client";
 import "./globals.css";
 
-const montserratHeading = Montserrat({
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-sans" });
+
+const notoSansHeading = Noto_Sans({
   subsets: ["latin"],
   variable: "--font-heading",
 });
@@ -48,7 +56,9 @@ export default function RootLayout({
         geistSans.variable,
         geistMono.variable,
         notoSans.variable,
-        montserratHeading.variable,
+        "font-sans",
+        outfit.variable,
+        notoSansHeading.variable,
       )}
     >
       <body
