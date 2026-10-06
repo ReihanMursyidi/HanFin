@@ -1,129 +1,138 @@
-'use server';
+"use server";
 
-import type { Transaction } from '@/app/types/transaction';
-import { createClient } from '@/lib/supabase/server';
-import { generateEmbedding } from '../ai/embedding';
+import type { Transaction } from "@/app/types/transaction";
+import { createClient } from "@/lib/supabase/server";
+import { generateEmbedding } from "../ai/embedding";
 
+// TRANSACTIONS: READ
 export async function getBalanceSummary() {
-   const supabase = await createClient();
+  const supabase = await createClient();
 
-   const { data } = await supabase.from('transactions').select('amount, type');
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("amount, type");
 
-   const { totalIncome, totalExpense, savings } = (data || []).reduce(
-      (acc, tx) => {
-         if (tx.type === 'income') acc.totalIncome += tx.amount;
-         else if (tx.type === 'expense') acc.totalExpense += tx.amount;
-         acc.savings = acc.totalIncome - acc.totalExpense;
-         return acc;
-      },
-      {
-         totalIncome: 0,
-         totalExpense: 0,
-         savings: 0,
-      },
-   );
+  if (error) throw new Error(`Failed to fetch balance: ${error.message}`);
 
-   return {
-      totalIncome,
-      totalExpense,
-      savings,
-   };
+  const summary = (data || []).reduce(
+    (acc, tx) => {
+      if (tx.type === "income") acc.totalIncome += tx.amount;
+      else if (tx.type === "expense") acc.totalExpense += tx.amount;
+
+      acc.savings = acc.totalIncome - acc.totalExpense;
+      return acc;
+    },
+    { totalIncome: 0, totalExpense: 0, savings: 0 },
+  );
+
+  return summary;
 }
 
 export async function getTransactions(params?: {
-   limit?: number;
-   page?: number;
-   search?: string;
+  limit?: number;
+  page?: number;
+  search?: string;
 }) {
-   const { limit = 10, page = 1, search } = params || {};
-   const supabase = await createClient();
-   let query = supabase
-      .from('transactions')
-      .select('id, amount, type, description, date, category', {
-         count: 'exact',
-      })
-      .order('date').order('created_at', {
-         ascending: false,
-      });
+  const { limit = 10, page = 1, search } = params || {};
+  const supabase = await createClient();
 
-   if (search) {
-      query = query.ilike('description', `%${search}%`);
-   }
+  let query = supabase
+    .from("transactions")
+    .select("id, amount, type, description, date, category", { count: "exact" })
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
 
-   const from = (page - 1) * limit;
-   const to = from + limit - 1;
+  if (search) {
+    query = query.ilike("description", `%${search}%`);
+  }
 
-   const { data, error, count } = await query.range(from, to);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
-   if (error) throw new Error(error.message);
+  const { data, error, count } = await query.range(from, to);
 
-   const totalData = count || 0;
+  if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
-   return {
-      data,
-      totalData,
-      totalPages: Math.ceil(totalData / limit),
-   };
+  const totalData = count || 0;
+
+  return {
+    data,
+    totalData,
+    totalPages: Math.ceil(totalData / limit),
+  };
 }
 
+// EMBEDDING UTILITY
 async function handleEmbedding(
-   transaction: Omit<Transaction, 'id' | 'user_id' | 'embedding'>,
+  transaction: Omit<Transaction, "id" | "user_id" | "embedding">,
 ) {
-   const embeddingText = JSON.stringify(transaction);
+  const embeddingText = JSON.stringify({
+    amount: transaction.amount,
+    type: transaction.type,
+    category: transaction.category,
+    description: transaction.description,
+    date: transaction.date,
+  });
 
-   let embeddingVector: number[] | null = null;
-
-   try {
-      embeddingVector = await generateEmbedding(embeddingText);
-   } catch(error) {
-      throw new Error(`Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`);
-   }
-
-   return embeddingVector;
+  try {
+    return await generateEmbedding(embeddingText);
+  } catch (error) {
+    throw new Error(
+      `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
+// TRANSACTIONS: WRITE (CUD)
 export async function createTransaction(
-   transaction: Omit<Transaction, 'id' | 'user_id' | 'embedding'>,
+  transaction: Omit<Transaction, "id" | "user_id" | "embedding">,
 ) {
-   const supabase = await createClient();
-   const payload: Record<string, unknown> = {...transaction};
-   const embeddingVector = await handleEmbedding(transaction);
-   if (embeddingVector) payload.embedding = embeddingVector;
-   const { data, error } = await supabase.from('transactions').insert(payload);
+  const supabase = await createClient();
+  const payload: Record<string, unknown> = { ...transaction };
 
-   if (error) throw new Error(error.message);
+  const embeddingVector = await handleEmbedding(transaction);
+  if (embeddingVector) {
+    payload.embedding = embeddingVector;
+  }
 
-   return data;
-}
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert(payload)
+    .select()
+    .single();
 
-export async function deleteTransaction(id: string) {
-   const supabase = await createClient();
-   const { error, success } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', id);
-   
-   if (error) throw new Error(error.message);
-
-   return success;
+  if (error) throw new Error(`Failed to create transaction: ${error.message}`);
+  return data;
 }
 
 export async function updateTransaction(
-   id: string,
-   transaction: Omit<Transaction, 'id' | 'user_id' | 'embedding'>,
+  id: string,
+  transaction: Omit<Transaction, "id" | "user_id" | "embedding">,
 ) {
-   const supabase = await createClient();
-   const payload: Record<string, unknown> = {...transaction};
-   const embeddingVector = await handleEmbedding(transaction);
-   
-   if (embeddingVector) payload.embedding = embeddingVector;
+  const supabase = await createClient();
+  const payload: Record<string, unknown> = { ...transaction };
 
-   const { data, error } = await supabase
-      .from('transactions')
-      .update(payload)
-      .eq('id', id);
+  const embeddingVector = await handleEmbedding(transaction);
+  if (embeddingVector) {
+    payload.embedding = embeddingVector;
+  }
 
-   if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
 
-   return data;
+  if (error) throw new Error(`Failed to update transaction: ${error.message}`);
+  return data;
+}
+
+export async function deleteTransaction(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("transactions").delete().eq("id", id);
+
+  if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
+
+  return true;
 }
