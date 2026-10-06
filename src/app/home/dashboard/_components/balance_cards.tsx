@@ -1,96 +1,108 @@
-'use client';
+"use client";
 
-import { TextDots } from '@/components/text-dots';
+import { useQuery } from "@tanstack/react-query";
+import { TrendingDownIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
+
+import { TextDots } from "@/components/text-dots";
 import {
   Card,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { getBalanceSummary } from '@/features/transaction/action';
-import { convertToIDR } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
-import { TrendingDownIcon, TrendingUpIcon, WalletIcon } from 'lucide-react';
+} from "@/components/ui/card";
+import { getBalanceSummary } from "@/features/transaction/action";
+import { convertToIDR } from "@/lib/utils";
+
+// Prop interface utk komponen Card internal
+interface BalanceCardItemProps {
+  title: string;
+  amount?: number;
+  icon: React.ReactNode;
+  footerText: string;
+  isLoading: boolean;
+}
+
+function BalanceCardItem({
+  title,
+  amount,
+  icon,
+  footerText,
+  isLoading,
+}: BalanceCardItemProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-primary">
+          {icon}
+          {title}
+        </CardTitle>
+        <CardDescription className="text-lg font-semibold lg:text-2xl text-secondary-foreground">
+          {isLoading ? (
+            <TextDots>Calculating</TextDots>
+          ) : amount !== undefined ? (
+            convertToIDR(Number(amount || 0))
+          ) : (
+            "No data available"
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardFooter className="text-sm text-muted-foreground">
+        {footerText}
+      </CardFooter>
+    </Card>
+  );
+}
 
 export function BalanceCards() {
   const { data, error, isLoading } = useQuery({
-    queryKey: ['balance'],
+    queryKey: ["balance"],
     queryFn: () => getBalanceSummary(),
   });
 
+  // 3. Tampilkan UI Error
   if (error) {
     return (
-      <div className="w-full p-4 text-sm border rounded-lg border-destructive/50 text-destructive bg-destructive/10">
-        Failed to get balance
+      <div className="w-full p-4 mb-8 text-sm font-medium border rounded-lg border-destructive/50 text-destructive bg-destructive/10">
+        Failed to load balance summary. Please try refreshing the page.
       </div>
     );
   }
 
+  // 4. Konfigurasi data untuk di-map
+  const cardsConfig = [
+    {
+      title: "Savings",
+      amount: data?.savings,
+      icon: <WalletIcon className="text-yellow-500 size-4" />,
+      footerText: "Savings for all time",
+    },
+    {
+      title: "Incomes",
+      amount: data?.totalIncome,
+      icon: <TrendingUpIcon className="text-green-500 size-4" />,
+      footerText: "Total Incomes for all time",
+    },
+    {
+      title: "Expenses",
+      amount: data?.totalExpense,
+      icon: <TrendingDownIcon className="text-red-500 size-4" />,
+      footerText: "Total expenses for all time",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-3">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-primary">
-            <WalletIcon className="size-4 text-yellow-500" />
-            Savings
-          </CardTitle>
-          <CardDescription className="text-lg lg:text-2xl font-semibold text-secondary-foreground">
-            {isLoading ? (
-              <TextDots>
-                Calculating
-              </TextDots>
-            ) : data ? (
-              convertToIDR(Number(data.savings || 0))
-            ) : (
-              'No data available'
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="text-sm">Savings for all time</CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-primary">
-            <TrendingUpIcon className="size-4 text-green-500" />
-            Incomes
-          </CardTitle>
-          <CardDescription className="text-lg lg:text-2xl font-semibold text-secondary-foreground">
-            {isLoading ? (
-              <TextDots>
-                Calculating
-              </TextDots>
-            ) : data ? (
-              convertToIDR(Number(data.totalIncome || 0))
-            ) : (
-              'No data available'
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="text-sm">Total Incomes for all time</CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-primary">
-            <TrendingDownIcon className="size-4 text-red-500" />
-            Expenses
-          </CardTitle>
-          <CardDescription className="text-lg lg:text-2xl font-semibold text-secondary-foreground">
-            {isLoading ? (
-              <TextDots>
-                Calculating
-              </TextDots>
-            ) : data ? (
-              convertToIDR(Number(data.totalExpense || 0))
-            ) : (
-              'No data available'
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="text-sm">Total expenses for all time</CardFooter>
-      </Card>
+      {cardsConfig.map((card, index) => (
+        <BalanceCardItem
+          key={index}
+          title={card.title}
+          amount={card.amount}
+          icon={card.icon}
+          footerText={card.footerText}
+          isLoading={isLoading}
+        />
+      ))}
     </div>
   );
 }
