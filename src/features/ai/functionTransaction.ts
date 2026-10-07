@@ -18,7 +18,7 @@ const transactionProperties = {
    },
    category: {
       type: Type.STRING,
-      enum: CATEGORIES,
+      enum: [...CATEGORIES],
       description: 'The category of the transaction',
    },
    description: {

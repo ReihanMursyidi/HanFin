@@ -39,13 +39,20 @@ import { CATEGORIES } from "@/constants/transaction-constant";
 import { updateTransaction } from "@/features/transaction/action";
 import type { SelectedTransactionState } from "./delete-transaction-dialog";
 
-// 1. Zod Schema: Perlindungan .trim() agar spasi kosong tidak dianggap valid
+const categoryValues = [...CATEGORIES] as [
+  (typeof CATEGORIES)[number],
+  ...(typeof CATEGORIES)[number][],
+];
+
+// 1. Zod Schema
 const formSchema = z.object({
   amount: z.string().trim().min(1, "Amount is required"),
   type: z.enum(["income", "expense"], {
     message: "Type is required",
   }),
-  category: z.string().trim().min(1, "Category is required"),
+  category: z.enum(categoryValues, {
+    message: "Category is required",
+  }),
   date: z.string().min(1, "Date is required"),
   description: z.string().trim().min(1, "Description is required"),
 });
@@ -69,7 +76,7 @@ export default function UpdateTransactionDialog({
     defaultValues: {
       amount: "",
       type: "income",
-      category: "",
+      category: categoryValues[0],
       date: "",
       description: "",
     },
@@ -77,7 +84,6 @@ export default function UpdateTransactionDialog({
 
   const { mutate, isPending } = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormValues }) => {
-      // Pastikan fallback ke 0 jika parsing gagal
       const formattedData = {
         ...data,
         amount: parseFloat(data.amount) || 0,
@@ -132,7 +138,6 @@ export default function UpdateTransactionDialog({
     >
       <DialogContent className="sm:max-w-106.25">
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          {/* 4. PERBAIKAN HTML SEMANTIK: DialogHeader HANYA berisi Title & Description */}
           <DialogHeader className="gap-1 mb-5">
             <DialogTitle>Update Transaction</DialogTitle>
             <DialogDescription>

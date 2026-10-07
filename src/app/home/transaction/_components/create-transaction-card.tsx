@@ -42,11 +42,19 @@ const formSchema = z.object({
   type: z.enum(["income", "expense"], {
     message: "Type is required",
   }),
-  category: z.string().trim().min(1, "Category is required"),
+  category: z
+    .string()
+    .trim()
+    .min(1, "Category is required")
+    .refine(
+      (value) => CATEGORIES.includes(value as (typeof CATEGORIES)[number]),
+      {
+        message: "Category is required",
+      },
+    ),
   date: z.string().min(1, "Date is required"),
   description: z.string().trim().min(1, "Description is required"),
 });
-
 type FormValues = z.infer<typeof formSchema>;
 
 export default function CreateTransactionCard() {
@@ -65,9 +73,12 @@ export default function CreateTransactionCard() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: FormValues) => {
-      const formattedData = {
+      const formattedData: Parameters<typeof createTransaction>[0] = {
         ...data,
-        amount: parseFloat(data.amount) || 0,
+        amount: Number.parseFloat(data.amount) || 0,
+        category: data.category as Parameters<
+          typeof createTransaction
+        >[0]["category"],
       };
 
       return createTransaction(formattedData);
@@ -76,7 +87,6 @@ export default function CreateTransactionCard() {
       form.reset();
 
       // 3. Invalidate Cache:
-      // Memuat ulang tabel transaksi DAN kartu saldo di dashboard
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["balance"] });
 

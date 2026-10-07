@@ -31,6 +31,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarTrigger,
+  useSidebar,
 } from "../ui/sidebar";
 import { ModeToggle } from "../mode-toggle";
 import { UserProfile } from "../user-profile";
@@ -80,6 +81,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar collapsible="icon" variant="floating">
@@ -140,7 +142,7 @@ export function AppSidebar() {
                                 isActive={pathname === sub.href}
                                 className="py-4 text-sm"
                               >
-                                <Link href={sub.href}>
+                                <Link href={sub.href} onClick={() => setOpenMobile(false)}>
                                   {sub.icon}
                                   <span>{sub.label}</span>
                                 </Link>
@@ -167,7 +169,7 @@ export function AppSidebar() {
                         "bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground",
                     )}
                   >
-                    <Link href={item.href || "#"}>
+                    <Link href={item.href || "#"} onClick={() => setOpenMobile(false)}>
                       {item.icon}
                       <span>{item.label}</span>
                     </Link>

@@ -1,4 +1,4 @@
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Fragment } from "react/jsx-runtime";
 
@@ -63,6 +63,7 @@ interface TransactionTableProps {
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearch: (search: string) => void;
+  onAddClick?: () => void;
 }
 
 // 2. MAIN COMPONENT
@@ -75,6 +76,7 @@ export default function TransactionTable({
   setPage,
   setLimit,
   setSearch,
+  onAddClick,
 }: TransactionTableProps) {
   const [localSearch, setLocalSearch] = useState(search);
   const [selectedTransaction, setSelectedTransaction] =
@@ -104,7 +106,8 @@ export default function TransactionTable({
             <CardTitle>Recent Transactions</CardTitle>
             <CardDescription>Your latest financial activities.</CardDescription>
           </div>
-          <div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <Input
               placeholder="Search by description..."
               value={localSearch}
@@ -112,6 +115,16 @@ export default function TransactionTable({
               className="w-full bg-background"
               disabled={isLoading}
             />
+
+            <Button
+              size="icon"
+              className="lg:hidden shrink-0 shadow-sm"
+              onClick={onAddClick}
+              title="Add Transaction"
+            >
+              <PlusIcon className="size-4" />
+              <span className="sr-only">Add Transaction</span>
+            </Button>
           </div>
         </CardHeader>
 

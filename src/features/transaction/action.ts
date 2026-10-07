@@ -91,9 +91,13 @@ export async function createTransaction(
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...transaction };
 
-  const embeddingVector = await handleEmbedding(transaction);
-  if (embeddingVector) {
-    payload.embedding = embeddingVector;
+  try {
+    const embeddingVector = await handleEmbedding(transaction);
+    if (embeddingVector) {
+      payload.embedding = embeddingVector;
+    }
+  } catch (error) {
+    console.error("[Embedding Warning]: Failed to generate embedding:", error);
   }
 
   const { data, error } = await supabase
@@ -116,9 +120,13 @@ export async function updateTransaction(
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...transaction };
 
-  const embeddingVector = await handleEmbedding(transaction);
-  if (embeddingVector) {
-    payload.embedding = embeddingVector;
+  try {
+    const embeddingVector = await handleEmbedding(transaction);
+    if (embeddingVector) {
+      payload.embedding = embeddingVector;
+    }
+  } catch (error) {
+    console.error("[Embedding Warning]: Failed to generate embedding:", error);
   }
 
   const { data, error } = await supabase
