@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import type { Transaction } from "@/app/types/transaction";
 import { createClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "../ai/embedding";
@@ -102,6 +103,9 @@ export async function createTransaction(
     .single();
 
   if (error) throw new Error(`Failed to create transaction: ${error.message}`);
+  revalidatePath("/home/dashboard");
+  revalidatePath("/home/transaction");
+
   return data;
 }
 
@@ -125,6 +129,9 @@ export async function updateTransaction(
     .single();
 
   if (error) throw new Error(`Failed to update transaction: ${error.message}`);
+  revalidatePath("/home/dashboard");
+  revalidatePath("/home/transaction");
+
   return data;
 }
 
@@ -133,6 +140,8 @@ export async function deleteTransaction(id: string) {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
 
   if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
+  revalidatePath("/home/dashboard");
+  revalidatePath("/home/transaction");
 
   return true;
 }
