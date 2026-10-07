@@ -1,66 +1,85 @@
-'use server';
+"use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { AuthInput } from './schema';
+import { authSchema, type AuthInput } from "./schema";
 
 export async function loginUser(data: AuthInput) {
-   const supabase = await createClient();
+  const validated = authSchema.parse(data);
+  const supabase = await createClient();
 
-   const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-   });
+  const { error } = await supabase.auth.signInWithPassword({
+    email: validated.email,
+    password: validated.password,
+  });
 
-   if (error) {
-      throw new Error(error.message === 'Invalid login credentials'
-         ? 'Email or password is incorrect'
-         : error.message
-      );
-   }
+  if (error) {
+    console.error("[Auth Login Error]:", error.message);
 
-   return 'Login success!';
+    if (error.message.includes("Invalid login credentials")) {
+      throw new Error("Email or password is incorrect.");
+    }
+    throw new Error(error.message);
+  }
+
+  return { success: true, message: "Login success!" };
 }
 
 export async function registerUser(data: AuthInput) {
-   if (!data.username || data.username.length < 3) {
-      throw new Error('Username must be at least 3 characters long.');
-   }
+  const validated = authSchema.parse(data);
 
-   const supabase = await createClient();
+  if (!validated.username || validated.username.trim().length < 3) {
+    throw new Error("Username must be at least 3 characters long.");
+  }
 
-   const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-         data: {
-            username: data.username,
-         }
-      }
-   });
+  const supabase = await createClient();
 
-   if (error) {
-      throw new Error(error.message === 'User already registered'
-         ? 'Email is already registered, please login.'
-         : error.message
-      );
-   }
+  const { error } = await supabase.auth.signUp({
+    email: validated.email,
+    password: validated.password,
+    options: {
+      data: {
+        username: validated.username.trim(),
+      },
+    },
+  });
 
-   return 'Registration succeed! Please login.';
+  if (error) {
+    console.error("[Auth Register Error]:", error.message);
+
+    if (error.message.includes("User already registered")) {
+      throw new Error("Email is already registered. Please login.");
+    }
+    throw new Error(error.message);
+  }
+
+  await supabase.auth.signOut();
+  return "Registration succeed! Please login.";
 }
 
 export async function logoutUser() {
-   const supabase = await createClient();
-   const { error } = await supabase.auth.signOut();
-   if (error) throw new Error(error.message);
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signOut();
 
-   return 'Logout success!';
+  if (error) {
+    console.error("[Auth Logout Error]:", error.message);
+    throw new Error(error.message);
+  }
+
+  return { success: true, message: "Logout success!" };
 }
 
-export async function getCurrentUser() {
-   const supabase = await createClient();
-   const { data: { user } } = await supabase.auth.getUser();
+export async function getCurrentUser(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-   if (!user) return null;
+  if (error || !user) return null;
 
-   return user.user_metadata?.username || user.email;
+  const usernameFromMetadata = user.user_metadata?.username as
+    string | undefined;
+  const emailPrefix = user.email ? user.email.split("@")[0] : null;
+
+  return usernameFromMetadata || emailPrefix || "User";
 }

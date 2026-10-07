@@ -44,7 +44,7 @@ const categoryValues = [...CATEGORIES] as [
   ...(typeof CATEGORIES)[number][],
 ];
 
-// 1. Zod Schema
+// Zod Schema
 const formSchema = z.object({
   amount: z.string().trim().min(1, "Amount is required"),
   type: z.enum(["income", "expense"], {
@@ -59,7 +59,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// 2. Props: Menggunakan tipe eksternal dan menghapus 'refetch'
 interface UpdateTransactionDialogProps {
   selectedTransaction: SelectedTransactionState;
   setSelectedTransaction: Dispatch<SetStateAction<SelectedTransactionState>>;
@@ -93,8 +92,6 @@ export default function UpdateTransactionDialog({
     onSuccess: () => {
       setSelectedTransaction(null);
       form.reset();
-
-      // 3. Cache Invalidation: Update tabel dan dashboard secara global
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["balance"] });
 
@@ -107,7 +104,7 @@ export default function UpdateTransactionDialog({
     },
   });
 
-  // Sinkronisasi data ketika user mengklik tombol Edit di tabel
+  // Sinkronisasi data
   useEffect(() => {
     if (selectedTransaction?.action === "update") {
       form.reset({
@@ -145,7 +142,6 @@ export default function UpdateTransactionDialog({
             </DialogDescription>
           </DialogHeader>
 
-          {/* 5. FieldGroup dikeluarkan dari DialogHeader */}
           <FieldGroup className="gap-4">
             <Controller
               control={form.control}

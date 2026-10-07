@@ -41,14 +41,14 @@ export async function generateChart(request: string) {
           <instruction>
             1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
             2. Grouping and Summarization:
-               - If the query is about expense type, group by category name.
-               - If it's about time trend, group by date, day, or month.
-               - If it's comparing income and expenses, group by type.
-               - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Other" if necessary.
+              - If the query is about expense type, group by category name.
+              - If it's about time trend, group by date, day, or month.
+              - If it's comparing income and expenses, group by type.
+              - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Other" if necessary.
             3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
             4. Chart Type Selection:
-               - Use 'chartType: "pie"' if the user asks for proportions, ratios, percentages, or category composition.
-               - Use 'chartType: "bar"' if the user asks for comparison, over-time trends, chronological analysis, or comparing individual entities.
+              - Use 'chartType: "pie"' if the user asks for proportions, ratios, percentages, or category composition.
+              - Use 'chartType: "bar"' if the user asks for comparison, over-time trends, chronological analysis, or comparing individual entities.
           </instruction>
           <context>
             Current Date : ${new Date().toISOString()}
@@ -121,10 +121,10 @@ export async function generateImage(request: string) {
           <instruction>
             1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
             2. Grouping & Summarization: 
-               - If the query is about expense type, group by category name.
-               - If it's about time trend, group by date, day, or month.
-               - If it's comparing income and expenses, group by type.
-               - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Others" if necessary.
+              - If the query is about expense type, group by category name.
+              - If it's about time trend, group by date, day, or month.
+              - If it's comparing income and expenses, group by type.
+              - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Others" if necessary.
             3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
             4. Create a visually outstanding bento-style design.
           </instruction>
@@ -181,28 +181,28 @@ export async function generateVideo(request: string) {
 
   const contents = `
       <role>
-         You are an AI Financial Analyst and motion designer. Your task is to analyze transactions in <context> 
-         and generate a video for an infographic and conceptual dashboard in bento grid style that directly responds to the user's request.
+        You are an AI Financial Analyst and motion designer. Your task is to analyze transactions in <context> 
+        and generate a video for an infographic and conceptual dashboard in bento grid style that directly responds to the user's request.
       </role>
       <input>
-         User request: "${request}"
+        User request: "${request}"
       </input>
       <instruction>
-         1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
-         2. Grouping & Summarization: 
-            - If the query is about expense type, group by category name.
-            - If it's about time trend, group by date, day, or month.
-            - If it's comparing income and expenses, group by type.
-            - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Others" if necessary.
-         3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
-         4. Create an outstanding video with a bento-style design.
-         5. Maximum video duration is 10 seconds.
+        1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
+        2. Grouping & Summarization: 
+          - If the query is about expense type, group by category name.
+          - If it's about time trend, group by date, day, or month.
+          - If it's comparing income and expenses, group by type.
+          - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Others" if necessary.
+        3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
+        4. Create an outstanding video with a bento-style design.
+        5. Maximum video duration is 10 seconds.
       </instruction>
       <context>
-         Current Date : ${new Date().toISOString()}
-         Data transaction : ${contextData}
+        Current Date : ${new Date().toISOString()}
+        Data transaction : ${contextData}
       </context>
-   `;
+  `;
 
   let operation = await ai.models.generateVideos({
     model: "veo-3.1-lite-generate-preview",

@@ -62,15 +62,19 @@ export default function Home() {
       }
       return await loginUser(data);
     },
-    onSuccess: (message) => {
-      toast.success(message);
-      if (!isRegister) {
-        // Hapus cache lama saat login berhasil lalu arahkan ke dashboard
-        queryClient.removeQueries();
-        router.push("/home/dashboard");
-      } else {
+    onSuccess: (response) => {
+      if (isRegister) {
+        toast.success(
+          typeof response === "string" ? response : "Registration successful!",
+        );
         setIsRegister(false);
         form.reset();
+      } else {
+        queryClient.removeQueries();
+        toast.success("Welcome!");
+
+        router.push("/home/dashboard");
+        router.refresh();
       }
     },
     onError: (error) => {

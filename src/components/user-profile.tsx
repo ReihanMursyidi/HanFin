@@ -34,12 +34,19 @@ export function UserProfile() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      await logoutUser();
-      queryClient.removeQueries();
-      toast.success("Logout Success");
+      const res = await logoutUser();
 
-      router.push("/");
-    } catch {
+      if (res?.success) {
+        queryClient.removeQueries();
+        toast.success("Logout Success");
+
+        router.push("/");
+        router.refresh();
+      } else {
+        throw new Error("Gagal memproses permintaan keluar.");
+      }
+    } catch (err) {
+      console.error(err);
       toast.error("Logout Failed");
       setIsLoggingOut(false);
     }

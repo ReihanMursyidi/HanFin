@@ -2,72 +2,80 @@
 
 import type { Content } from "@google/genai";
 import {
-	CATEGORIES,
-	transactionSchema,
+  CATEGORIES,
+  transactionSchema,
 } from "@/constants/transaction-constant";
 import { createAI } from "./instance";
 
 export async function extractReceiptData(formData: FormData) {
-	const file = formData.get("file") as File;
-	if (!file) {
-		throw new Error("No file uploaded");
-	}
+  const file = formData.get("file");
 
-	const mimeType = file.type;
-	const base64Data = Buffer.from(await file.arrayBuffer()).toString("base64");
-	const ai = createAI();
-	const contents: Content[] = [
-		{
-			role: "user",
-			parts: [
-				{
-					inlineData: {
-						mimeType,
-						data: base64Data,
-					},
-				},
-				{
-					text: `
-                  <role>
-                     You are an AI finance assitant, who can extract transaction details from receipt.
-                  </role>
-                  <instruction>
-                     Extract the transaction details from the receipt and return it as a structure JSON object.
-                     The JSON object must have exactly these fields:
-                     - "amount": a number representing the cost (positive). Use 0 if not provided.
-                     - "type": type of transaction, either 'income' or 'expense'.
-                     - "category": choose the most appropriate category from this exact list:
-                                 ${CATEGORIES.join(",")}.
-                     - "description": a short string describing the transaction, first letter capitalized.
-                     - "date": date of transaction in YYYY-MM-DD format.
-                              Assume the current date if relative terms like 'today' or 'just now'. If not define use current date.
-                  </instruction>
-                  <context>
-                        Current Date : ${new Date().toISOString()}
-                  </context>
-                  <outputFormat>
-                        Respond with only the raw JSON object, no markdown blocks, no text before or after.
-                  </outputFormat>
-               `,
-				},
-			],
-		},
-	];
+  if (!file || !(file instanceof File) || file.size === 0) {
+    throw new Error("Invalid or empty file uploaded.");
+  }
 
-	const response = await ai.models.generateContent({
-		model: "gemini-3.5-flash",
-		contents,
-	});
+  const mimeType = file.type || "image/jpeg";
+  const arrayBuffer = await file.arrayBuffer();
+  const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
-	if (!response.text) {
-		throw new Error("AI cannot generate data");
-	}
+  const ai = createAI();
 
-	const transaction = transactionSchema.parse(JSON.parse(`${response.text}`));
+  const contents: Content[] = [
+    {
+      role: "user",
+      parts: [
+        {
+          inlineData: {
+            mimeType,
+            data: base64Data,
+          },
+        },
+        {
+          text: `
+            <role>
+              You are an AI finance assistant specializing in extracting structured transaction details from receipts and invoices.
+            </role>
+            <instruction>
+              Extract transaction details from the provided receipt image and map them to a JSON object.
+              The JSON object must contain these exact fields:
+              - "amount": positive number representing total cost. Default to 0 if not visible.
+              - "type": either 'income' or 'expense' (most receipts are 'expense').
+              - "category": pick the single most accurate category from this list: [${CATEGORIES.join(", ")}].
+              - "description": concise text summarizing the merchant/items, capitalized first letter.
+              - "date": transaction date in YYYY-MM-DD format. Use current date if not defined or relative (e.g. 'today').
+            </instruction>
+            <context>
+              Current Date: ${new Date().toISOString()}
+            </context>
+          `,
+        },
+      ],
+    },
+  ];
 
-	return transaction;
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
 
-	// Save to DB
-	// await createTransaction(transaction);
-	// return 'Create transaction success';
+    if (!response.text) {
+      throw new Error("AI failed to extract text from the receipt.");
+    }
+
+    const rawData = JSON.parse(response.text);
+    const transaction = transactionSchema.parse(rawData);
+
+    return transaction;
+  } catch (error) {
+    console.error("[Extract Receipt Error]:", error);
+    throw new Error(
+      error instanceof Error
+        ? `Failed to process receipt: ${error.message}`
+        : "Failed to extract transaction data from receipt.",
+    );
+  }
 }
