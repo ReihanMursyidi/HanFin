@@ -6,33 +6,52 @@ import { cn } from "@/lib/utils";
 import QueryProvider from "@/providers/query-client";
 import "./globals.css";
 
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-sans" });
+// FONT CONFIGURATIONS
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 const notoSansHeading = Noto_Sans({
   subsets: ["latin"],
   variable: "--font-heading",
+  display: "swap",
 });
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  display: "swap",
   variable: "--font-noto-sans",
+  display: "swap",
 });
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
   subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
 });
 
+const fontVariables = cn(
+  outfit.variable,
+  notoSansHeading.variable,
+  notoSans.variable,
+  geistSans.variable,
+  geistMono.variable,
+);
+
 export const metadata: Metadata = {
-  title: "HanFin - Autonomous AI Finance Agent",
-  description: "Autonomous AI Finance Agent",
+  title: {
+    default: "HanFin - Autonomous AI Finance Agent",
+    template: "%s | HanFin",
+  },
+  description: "Autonomous AI Finance Agent for personal wealth management",
 };
 
 export default function RootLayout({
@@ -44,19 +63,10 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn(
-        "h-full",
-        "antialiased",
-        geistSans.variable,
-        geistMono.variable,
-        notoSans.variable,
-        "font-sans",
-        outfit.variable,
-        notoSansHeading.variable,
-      )}
+      className={cn("h-full antialiased font-sans", fontVariables)}
     >
       <body
-        className="flex flex-col min-h-full custom-scrollbar"
+        className="flex flex-col min-h-full custom-scrollbar bg-background text-foreground"
         suppressHydrationWarning
       >
         <ThemeProvider
@@ -67,7 +77,7 @@ export default function RootLayout({
         >
           <QueryProvider>
             {children}
-            <Toaster position="top-right" />
+            <Toaster position="top-right" richColors closeButton />
           </QueryProvider>
         </ThemeProvider>
       </body>

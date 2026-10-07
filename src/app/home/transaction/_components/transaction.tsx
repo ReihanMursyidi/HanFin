@@ -20,10 +20,10 @@ export default function Transaction() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <WizardInput />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-start">
         <TransactionTable
           transactions={data}
           isLoading={isLoading}

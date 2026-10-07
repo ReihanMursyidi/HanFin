@@ -1,9 +1,9 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Settings, UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { getCurrentUser, logoutUser } from "@/features/auth/action";
@@ -21,23 +21,19 @@ import {
 export function UserProfile() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [isLogingOut, setIsLogingOut] = useState(false);
-  const [username, setUsername] = useState("Loading...");
 
-  // State untuk mengontrol buka-tutup modal
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchUser() {
-      const name = await getCurrentUser();
-      if (name) setUsername(name);
-    }
-    fetchUser();
-  }, []);
+  // Integrasi TanStack Query
+  const { data: username, isLoading } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => getCurrentUser(),
+  });
 
   const handleLogout = async () => {
     try {
-      setIsLogingOut(true);
+      setIsLoggingOut(true);
       await logoutUser();
       queryClient.removeQueries();
       toast.success("Logout Success");
@@ -45,7 +41,7 @@ export function UserProfile() {
       router.push("/");
     } catch {
       toast.error("Logout Failed");
-      setIsLogingOut(false);
+      setIsLoggingOut(false);
     }
   };
 
@@ -57,14 +53,15 @@ export function UserProfile() {
             variant="ghost"
             size="icon"
             className="rounded-full ring-2 ring-transparent hover:ring-primary/50 transition-all"
+            title="User Profile"
           >
-            <UserCircle className="size-6 text-muted-foreground hover:text-primary" />
+            <UserCircle className="size-6 text-muted-foreground hover:text-primary transition-colors" />
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-1/2">
-          <DropdownMenuLabel className="truncate capitalize">
-            {username}
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="truncate capitalize font-medium">
+            {isLoading ? "Loading..." : username || "User"}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
@@ -73,19 +70,20 @@ export function UserProfile() {
             onClick={() => setIsProfileModalOpen(true)}
             className="cursor-pointer"
           >
-            <Settings className="mr-1 size-4" />
+            <Settings className="mr-2 size-4" />
             <span>Personalisasi</span>
           </DropdownMenuItem>
+
           <DropdownMenuSeparator />
 
           {/* Tombol Logout */}
           <DropdownMenuItem
             onClick={handleLogout}
-            disabled={isLogingOut}
+            disabled={isLoggingOut}
             className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
           >
-            <LogOut className="mr-1 size-4" />
-            {isLogingOut ? "Logging out..." : "Logout"}
+            <LogOut className="mr-2 size-4" />
+            {isLoggingOut ? "Logging out..." : "Logout"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

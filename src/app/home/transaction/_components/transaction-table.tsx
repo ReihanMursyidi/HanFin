@@ -195,7 +195,6 @@ export default function TransactionTable({
                             isExpense ? "text-red-500" : "text-emerald-500",
                           )}
                         >
-                          {isExpense ? "-" : "+"}{" "}
                           {convertToIDR(transaction.amount)}
                         </TableCell>
                         <TableCell>
