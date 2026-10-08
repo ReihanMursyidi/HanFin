@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getBalanceSummary } from "@/features/transaction/action";
-import { convertToIDR } from "@/lib/utils";
+import { convertToIDR } from "@/lib/format";
 
 // Prop interface utk komponen Card internal
 interface BalanceCardItemProps {

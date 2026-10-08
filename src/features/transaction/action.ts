@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Transaction } from "@/app/types/transaction";
 import { createClient } from "@/lib/supabase/server";
+import { transactionSchema } from "@/constants/transaction-constant";
 import { generateEmbedding } from "../ai/embedding";
 
 // TRANSACTIONS: READ
@@ -75,19 +76,15 @@ async function handleEmbedding(
     date: transaction.date,
   });
 
-  try {
-    return await generateEmbedding(embeddingText);
-  } catch (error) {
-    throw new Error(
-      `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+  return await generateEmbedding(embeddingText);
 }
 
 // TRANSACTIONS: WRITE (CUD)
 export async function createTransaction(
-  transaction: Omit<Transaction, "id" | "user_id" | "embedding">,
+  rawInput: Omit<Transaction, "id" | "user_id" | "embedding">,
 ) {
+  // 1. Validasi Zod di server untuk memastikan amount, type, dan category valid
+  const transaction = transactionSchema.parse(rawInput);
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...transaction };
 
@@ -107,6 +104,7 @@ export async function createTransaction(
     .single();
 
   if (error) throw new Error(`Failed to create transaction: ${error.message}`);
+
   revalidatePath("/home/dashboard");
   revalidatePath("/home/transaction");
 
@@ -115,8 +113,10 @@ export async function createTransaction(
 
 export async function updateTransaction(
   id: string,
-  transaction: Omit<Transaction, "id" | "user_id" | "embedding">,
+  rawInput: Omit<Transaction, "id" | "user_id" | "embedding">,
 ) {
+  // 1. Validasi Zod di server
+  const transaction = transactionSchema.parse(rawInput);
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...transaction };
 
@@ -137,6 +137,7 @@ export async function updateTransaction(
     .single();
 
   if (error) throw new Error(`Failed to update transaction: ${error.message}`);
+
   revalidatePath("/home/dashboard");
   revalidatePath("/home/transaction");
 
@@ -148,6 +149,7 @@ export async function deleteTransaction(id: string) {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
 
   if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
+
   revalidatePath("/home/dashboard");
   revalidatePath("/home/transaction");
 

@@ -34,7 +34,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getTransactions } from "@/features/transaction/action";
-import { cn, convertToIDR } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { convertToIDR } from "@/lib/format";
 
 import DeleteTransactionDialog, {
   SelectedTransactionState,

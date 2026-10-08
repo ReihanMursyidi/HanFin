@@ -69,5 +69,6 @@ export const updateTransactionDeclaration: FunctionDeclaration = {
   parameters: {
     type: Type.OBJECT,
     properties: transactionProperties,
+    required: ["id"],
   },
 };

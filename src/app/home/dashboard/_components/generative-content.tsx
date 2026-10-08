@@ -38,7 +38,8 @@ import {
   generateImage,
   generateVideo,
 } from "@/features/ai/generative-content";
-import { cn, convertToIDR } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { convertToIDR } from "@/lib/format";
 
 // --- KONSTANTA & SCHEMA ---
 const COLORS = [

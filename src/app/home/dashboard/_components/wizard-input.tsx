@@ -55,19 +55,20 @@ export default function WizardInput() {
     mutationFn: handleWizardTools,
     onSuccess: (response) => {
       toast.success(
-        <div className="response-ai w-full!">
+        <div className="response-ai w-full! max-h-48 overflow-y-auto text-sm leading-relaxed">
           <Markdown>{response}</Markdown>
         </div>,
       );
       // Sinkronisasi cache global React Query secara mandiri tanpa prop drilling
       queryClient.invalidateQueries({ queryKey: ["balance"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       form.reset();
     },
     onError: (error) => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to process your request",
+          : "Gagal memproses permintaanmu.",
       );
     },
   });
@@ -88,8 +89,9 @@ export default function WizardInput() {
   };
 
   const startRecording = async () => {
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
 
       const mediaRecorder = new MediaRecorder(stream);
@@ -110,13 +112,20 @@ export default function WizardInput() {
         mutate(formData);
 
         // Hentikan semua track audio setelah rekaman selesai
-        stream.getTracks().forEach((track) => track.stop());
-        audioStreamRef.current = null;
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((track) => track.stop());
+          audioStreamRef.current = null;
+        }
       };
 
       mediaRecorder.start();
       setIsRecording(true);
-    } catch {
+    } catch (err) {
+      console.error("[Microphone Access Error]:", err);
+      // Hentikan track jika terjadi kegagalan pembuatan MediaRecorder
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
       toast.error("Gagal mengakses mikrofon. Periksa izin akses browser.");
     }
   };
