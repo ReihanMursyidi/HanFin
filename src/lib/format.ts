@@ -31,3 +31,42 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;
 }
+
+// Format angka ke dalam mata uang IDR atau USD secara dinamis
+export function formatCurrency(
+  amount: number,
+  currency: "IDR" | "USD" = "IDR",
+): string {
+  return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "IDR" ? 0 : 2,
+  }).format(amount);
+}
+
+// Konversi nilai aset sesuai preferensi mata uang user
+export function convertAssetPrice({
+  amount,
+  baseCurrency,
+  targetCurrency,
+  fxRate = 17257,
+}: {
+  amount: number;
+  baseCurrency: "IDR" | "USD";
+  targetCurrency: "IDR" | "USD";
+  fxRate?: number;
+}): number {
+  if (baseCurrency === targetCurrency) return amount;
+
+  // Konversi USD ke IDR
+  if (baseCurrency === "USD" && targetCurrency === "IDR") {
+    return amount * fxRate;
+  }
+
+  // Konversi IDR ke USD
+  if (baseCurrency === "IDR" && targetCurrency === "USD") {
+    return amount / fxRate;
+  }
+
+  return amount;
+}
