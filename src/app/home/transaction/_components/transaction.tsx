@@ -32,8 +32,8 @@ export default function Transaction() {
             Transaction
           </h1>
           <p className="text-sm md:text-base">
-            Review and manage your recent transactions, recurring activity, and
-            spending insights in one place.
+            Tinjau dan kelola transaksi terbaru, aktivitas berulang, dan wawasan
+            pengeluaran Anda di satu tempat.
           </p>
         </section>
       </div>

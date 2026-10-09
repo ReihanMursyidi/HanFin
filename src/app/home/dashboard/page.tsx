@@ -14,8 +14,8 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-sm md:text-base">
-          Get insights into your spending, track your expenses, and manage your
-          finances.
+          Dapatkan wawasan tentang pengeluaran Anda, lacak pengeluaran, dan
+          kelola keuangan Anda.
         </p>
       </section>
       <DashboardContent />

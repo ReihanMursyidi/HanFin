@@ -4,8 +4,9 @@ import { unstable_cache } from "next/cache";
 import { MarketAsset, OHLCData } from "./types";
 import YahooFinance from "yahoo-finance2";
 
-// Inisialisasi instance YahooFinance (v3+)
-const yahooFinance = new YahooFinance();
+const yahooFinance = new YahooFinance({
+  suppressNotices: ["ripHistorical", "yahooSurvey"],
+});
 
 const BINANCE_ENDPOINTS = [
   "https://data-api.binance.vision",
@@ -24,7 +25,6 @@ async function fetchBinancePublic<T>(path: string): Promise<T> {
         return (await response.json()) as T;
       }
     } catch {
-      // Coba endpoint berikutnya jika terjadi timeout / blokir
       continue;
     }
   }
@@ -145,7 +145,7 @@ export const getCryptoChartData = unstable_cache(
 
 // ==== STOCKS MARKET (VIA YAHOO FINANCE) ====
 const STOCK_SYMBOLS = [
-  { symbol: "^JKSE", name: "IHSG (Composite Index)", short: "IHSG" },
+  { symbol: "^JKSE", name: "IHSG (Index Harga Saham Gabungan)", short: "IHSG" },
   { symbol: "BBCA.JK", name: "Bank Central Asia", short: "BBCA" },
   { symbol: "BBRI.JK", name: "Bank Rakyat Indonesia", short: "BBRI" },
   { symbol: "BMRI.JK", name: "Bank Mandiri", short: "BMRI" },
@@ -211,26 +211,45 @@ export async function getStockChartData(
   try {
     const yahooSymbol = symbol === "IHSG" ? "^JKSE" : `${symbol}.JK`;
 
-    const historical = (await yahooFinance.historical(yahooSymbol, {
+    const chartResult = (await yahooFinance.chart(yahooSymbol, {
       period1: new Date(period1),
       period2: new Date(),
       interval,
-    })) as unknown as Array<{
-      date: Date;
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-      volume: number;
-    }>;
+    })) as unknown as {
+      quotes: Array<{
+        date: Date;
+        open: number | null;
+        high: number | null;
+        low: number | null;
+        close: number | null;
+        volume: number | null;
+      }>;
+    };
 
-    return historical.map((data): OHLCData => ({
+    const quotes = chartResult.quotes || [];
+
+    // Filter baris data yang mengandung nilai null dari Yahoo Finance
+    // Antisipasi pasar saham libur
+    const validQuotes = quotes.filter(
+      (q) =>
+        q &&
+        typeof q.open === "number" &&
+        typeof q.high === "number" &&
+        typeof q.low === "number" &&
+        typeof q.close === "number" &&
+        q.open !== null &&
+        q.high !== null &&
+        q.low !== null &&
+        q.close !== null,
+    );
+
+    return validQuotes.map((data): OHLCData => ({
       time: new Date(data.date).toISOString().split("T")[0],
-      open: data.open,
-      high: data.high,
-      low: data.low,
-      close: data.close,
-      volume: data.volume,
+      open: Number(data.open),
+      high: Number(data.high),
+      low: Number(data.low),
+      close: Number(data.close),
+      volume: Number(data.volume || 0),
     }));
   } catch (error) {
     console.error(`Stock Chart Error for ${symbol}:`, error);

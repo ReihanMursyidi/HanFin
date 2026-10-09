@@ -1,22 +1,24 @@
 import { notFound } from "next/navigation";
 import { getFinancialProfile } from "@/features/profile/action";
-import { Currency } from "@/features/market/types";
-import {
-  getMarketTransactions,
-  getPortfolioAssets,
-} from "@/features/market/action";
 import {
   getCryptoChartData,
   getCryptoMarketData,
+  getExchangeRateUSDIDR,
   getStockChartData,
   getStockMarketData,
 } from "@/features/market/market-data";
+import { convertCurrency } from "@/lib/format";
+import type { Currency } from "@/features/market/types";
 import { PortfolioCard } from "../_components/portfolio-card";
 import { TradingViewChart } from "../_components/trading-view-chart";
 import { MarketAssetsTable } from "../_components/market-assets-table";
 import { MarketWizardInput } from "../_components/market-wizard-input";
 import { TransactionSection } from "../_components/transaction-section";
 import { AiPredictorCard } from "../_components/ai-predictor-card";
+import {
+  getMarketTransactions,
+  getPortfolioAssets,
+} from "@/features/market/action";
 
 interface PageProps {
   params: Promise<{ type: string }>;
@@ -26,7 +28,6 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
   const resolvedParams = await params;
   const rawType = resolvedParams.type.toLowerCase();
 
-  // Validasi URL route: hanya izinkan 'stocks' atau 'crypto'
   if (rawType !== "stocks" && rawType !== "crypto") {
     notFound();
   }
@@ -44,34 +45,39 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
 
   const activeSymbol = assetType === "stocks" ? "IHSG" : "BTC";
 
-  // 2. Fetch data pasar & portofolio secara paralel
-  const [portfolioAssets, chartData, marketAssets, transactions] =
-    await Promise.all([
-      getPortfolioAssets(assetType),
-      assetType === "stocks"
-        ? getStockChartData(activeSymbol, "2024-01-01", "1d")
-        : getCryptoChartData(activeSymbol, "1d", 100),
-      assetType === "stocks" ? getStockMarketData() : getCryptoMarketData(),
-      getMarketTransactions(assetType),
-    ]);
+  // 2. Fetch data pasar, nilai kurs FX, dan portofolio secara paralel
+  const [fxRate, marketAssetsRaw, chartData, transactions] = await Promise.all([
+    getExchangeRateUSDIDR(),
+    assetType === "stocks" ? getStockMarketData() : getCryptoMarketData(),
+    assetType === "stocks"
+      ? getStockChartData(activeSymbol, "2024-01-01", "1d")
+      : getCryptoChartData(activeSymbol, "1d", 100),
+    getMarketTransactions(assetType),
+  ]);
+
+  // Fetch portofolio dengan konversi kurs terintegrasi
+  const portfolioAssets = await getPortfolioAssets(assetType, currency, fxRate);
+
+  // 3. Konversi seluruh Daftar Aset Pasar sesuai mata uang pilihan user
+  const marketAssets = marketAssetsRaw.map((asset) => ({
+    ...asset,
+    price: convertCurrency(asset.price, asset.currency, currency, fxRate),
+    currency,
+  }));
 
   return (
-    <div className="container py-6 space-y-6 max-w-7xl">
-      {/* Header Halaman Dinamis tanpa Tabs */}
+    <div className="container py-4 space-y-6 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight capitalize">
+        <h1 className="text-2xl font-bold tracking-tight capitalize text-primary">
           {assetType} Market
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm mt-1">
           Pantau pergerakan pasar{" "}
-          {assetType === "stocks"
-            ? "Saham Indonesia (IHSG)"
-            : "Kripto (Crypto)"}{" "}
-          real-time, analisis dengan AI, dan kelola portofolio.
+          {assetType === "stocks" ? "Saham Indonesia" : "Crypto"} real-time,
+          analisis dengan AI, dan kelola portofolio.
         </p>
       </div>
 
-      {/* Top Section: Ringkasan Portofolio & Native Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-3 h-full">
           <PortfolioCard
@@ -84,18 +90,16 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
           <TradingViewChart
             data={chartData}
             symbol={activeSymbol}
+            assetType={assetType}
             currencySymbol={currency === "IDR" ? "Rp" : "$"}
           />
         </div>
       </div>
 
-      {/* Tabel Harga Aset Real-time */}
       <MarketAssetsTable assets={marketAssets} currency={currency} />
 
-      {/* Input Cepat via AI/Suara */}
       <MarketWizardInput assetType={assetType} />
 
-      {/* Bottom Section: Histori Transaksi & AI Predictor Agent */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-7">
           <TransactionSection

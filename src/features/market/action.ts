@@ -1,20 +1,63 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCryptoMarketData, getStockMarketData } from "./market-data";
+import {
+  getCryptoChartData,
+  getCryptoMarketData,
+  getExchangeRateUSDIDR,
+  getStockChartData,
+  getStockMarketData,
+} from "./market-data";
 import {
   AssetType,
   CreateMarketTransactionInput,
+  Currency,
   MarketTransaction,
+  OHLCData,
   PortfolioAsset,
 } from "./types";
 import { createClient } from "@/lib/supabase/server";
+import { convertCurrency } from "@/lib/format";
+
+// Server Action untuk mengambil data candlestick berdasarkan timeframe
+export async function getMarketChartData(
+  symbol: string,
+  assetType: AssetType,
+  timeframe: "1D" | "1W" | "1M" = "1D",
+): Promise<OHLCData[]> {
+  if (assetType === "crypto") {
+    const intervalMap: Record<string, string> = {
+      "1D": "1d",
+      "1W": "1w",
+      "1M": "1M",
+    };
+    const interval = intervalMap[timeframe] || "1d";
+    return getCryptoChartData(symbol, interval, 100);
+  } else {
+    const intervalMap: Record<string, "1d" | "1wk" | "1mo"> = {
+      "1D": "1d",
+      "1W": "1wk",
+      "1M": "1mo",
+    };
+    const period1Map: Record<string, string> = {
+      "1D": "2024-01-01",
+      "1W": "2022-01-01",
+      "1M": "2019-01-01",
+    };
+    const interval = intervalMap[timeframe] || "1d";
+    const period1 = period1Map[timeframe] || "2024-01-01";
+    return getStockChartData(symbol, period1, interval);
+  }
+}
 
 // ==== PORTOFOLIO: READ & CALCULATE PnL ====
 export async function getPortfolioAssets(
   assetType: AssetType,
+  userCurrency: Currency = "IDR",
+  fxRateOverride?: number,
 ): Promise<PortfolioAsset[]> {
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,6 +76,7 @@ export async function getPortfolioAssets(
   if (!assets || assets.length === 0) return [];
 
   // Ambil harga pasar real-time
+  const fxRate = fxRateOverride || (await getExchangeRateUSDIDR());
   const marketData =
     assetType === "crypto"
       ? await getCryptoMarketData()
@@ -43,19 +87,38 @@ export async function getPortfolioAssets(
       (m) => m.symbol.toUpperCase() === asset.symbol.toUpperCase(),
     );
 
-    const currentPrice = marketItem?.price || Number(asset.avg_buy_price);
-    const currentValue = Number(asset.total_quantity) * currentPrice;
-    const totalCost =
-      Number(asset.total_quantity) * Number(asset.avg_buy_price);
+    const baseMarketCurrency: Currency = assetType === "crypto" ? "USD" : "IDR";
+    const rawMarketPrice = marketItem?.price || Number(asset.avg_buy_price);
+
+    const currentPriceInUserCurrency = convertCurrency(
+      rawMarketPrice,
+      baseMarketCurrency,
+      userCurrency,
+      fxRate,
+    );
+
+    const assetDBCurrency: Currency =
+      (asset.currency as Currency) || baseMarketCurrency;
+    const avgBuyPriceInUserCurrency = convertCurrency(
+      Number(asset.avg_buy_price),
+      assetDBCurrency,
+      userCurrency,
+      fxRate,
+    );
+
+    const quantity = Number(asset.total_quantity);
+    const currentValue = quantity * currentPriceInUserCurrency;
+    const totalCost = quantity * avgBuyPriceInUserCurrency;
     const unrealizedPnl = currentValue - totalCost;
     const unrealizedPnlPercent =
       totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
 
     return {
       ...asset,
-      total_quantity: Number(asset.total_quantity),
-      avg_buy_price: Number(asset.avg_buy_price),
-      current_price: currentPrice,
+      currency: userCurrency,
+      total_quantity: quantity,
+      avg_buy_price: avgBuyPriceInUserCurrency,
+      current_price: currentPriceInUserCurrency,
       current_value: currentValue,
       unrealized_pnl: unrealizedPnl,
       unrealized_pnl_percent: unrealizedPnlPercent,

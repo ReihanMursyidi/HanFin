@@ -27,11 +27,11 @@ function getAssetLogoUrl(symbol: string, assetType: string): string {
   }
 
   const stockLogos: Record<string, string> = {
-    IHSG: "https://s3-symbol-logo.tradingview.com/indices/idx--big.svg",
+    IHSG: "https://s3-symbol-logo.tradingview.com/indices/jakarta-composite-index--big.svg",
     BBCA: "https://s3-symbol-logo.tradingview.com/bank-central-asia--big.svg",
     BBRI: "https://s3-symbol-logo.tradingview.com/bank-rakyat-indonesia--big.svg",
     BMRI: "https://s3-symbol-logo.tradingview.com/bank-mandiri--big.svg",
-    TLKM: "https://s3-symbol-logo.tradingview.com/telkom-indonesia--big.svg",
+    TLKM: "https://s3-symbol-logo.tradingview.com/telekom-indonesia--big.svg",
   };
 
   return stockLogos[cleanSymbol] || "";
@@ -87,11 +87,8 @@ export function MarketAssetsTable({
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              {/* Kolom Logo (Header Kosong) */}
               <TableHead className="w-12 pl-6" />
-              {/* Kolom Nama Aset (Rata Kiri) */}
               <TableHead className="text-left">Aset</TableHead>
-              {/* Kolom Harga & Change */}
               <TableHead className="text-center">Harga</TableHead>
               <TableHead className="text-center">24h Change</TableHead>
             </TableRow>
@@ -108,7 +105,7 @@ export function MarketAssetsTable({
                   />
                 </TableCell>
 
-                {/* 2. Kolom Nama Aset (Sejajar dengan Header "Aset") */}
+                {/* 2. Kolom Nama Aset */}
                 <TableCell className="text-left font-medium">
                   <div className="flex flex-col">
                     <span className="font-semibold text-foreground leading-snug">
