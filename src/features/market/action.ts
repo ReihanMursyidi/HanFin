@@ -316,7 +316,7 @@ export async function analyzeMarketWithAI(
   try {
     const ai = createAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

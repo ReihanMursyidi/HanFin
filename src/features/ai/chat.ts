@@ -14,7 +14,7 @@ import { getTransactionDeclaration } from "./functionTransaction";
 
 // === CONSTANTS & TYPES ===
 const MAX_FUNCTION_CALL_ROUNDS = 5;
-const CHAT_MODEL = "gemini-3.5-flash";
+const CHAT_MODEL = "gemini-3.6-flash";
 
 export interface UserProfile {
   currency?: string;
