@@ -8,7 +8,9 @@ import {
   getStockChartData,
   getStockMarketData,
 } from "./market-data";
-import {
+import type {
+  AIAnalysisRequest,
+  AIAnalysisResponse,
   AssetType,
   CreateMarketTransactionInput,
   Currency,
@@ -17,7 +19,9 @@ import {
   PortfolioAsset,
 } from "./types";
 import { createClient } from "@/lib/supabase/server";
-import { convertCurrency } from "@/lib/format";
+import { convertCurrency, formatCurrency } from "@/lib/format";
+import { calculateTechnicalIndicators } from "./technical-analysis";
+import { createAI } from "../ai/instance";
 
 // Server Action untuk mengambil data candlestick berdasarkan timeframe
 export async function getMarketChartData(
@@ -222,4 +226,115 @@ export async function deleteMarketTransaction(id: string) {
   revalidatePath("home/financial-market/crypto");
 
   return true;
+}
+
+export async function analyzeMarketWithAI(
+  request: AIAnalysisRequest,
+  currency: Currency = "IDR",
+): Promise<AIAnalysisResponse> {
+  let cryptoInterval: string = "1d";
+  let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
+  let period1 = "2024-01-01";
+
+  if (request.strategy === "scalping") {
+    cryptoInterval = "15m";
+    stockInterval = "15m";
+    period1 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+  } else if (request.strategy === "day_trading") {
+    cryptoInterval = "1h";
+    stockInterval = "1h";
+    period1 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+  } else if (request.strategy === "investing") {
+    cryptoInterval = "1w";
+    stockInterval = "1wk";
+    period1 = "2020-01-01";
+  }
+
+  // Fetch Candlesticks Sesuai Tipe Pasar
+  let candles =
+    request.asset_type === "crypto"
+      ? await getCryptoChartData(request.symbol, cryptoInterval, 150)
+      : await getStockChartData(request.symbol, period1, stockInterval);
+
+  // Fallback ke Data Harian ("1d") Jika Data Intraday Kosong/Kurang (< 20)
+  let activeInterval: string =
+    request.asset_type === "crypto" ? cryptoInterval : stockInterval;
+
+  if (!candles || candles.length < 20) {
+    activeInterval = "1d";
+    candles =
+      request.asset_type === "crypto"
+        ? await getCryptoChartData(request.symbol, "1d", 100)
+        : await getStockChartData(request.symbol, "2024-01-01", "1d");
+  }
+
+  // Kalkulasi Indikator & Format Harga
+  const techData = calculateTechnicalIndicators(
+    candles,
+    request,
+    activeInterval,
+  );
+  const formattedLastClose = formatCurrency(techData.lastClose, currency);
+
+  const prompt = `
+    Kamu adalah Analis Pasar Keuangan Profesional (Financial Market Predictor Agent).
+    Analisis aset ${request.symbol} (${request.asset_type}) untuk metode **${request.strategy.toUpperCase()}** (Timeframe ${techData.timeframeUsed}).
+
+    KONDISI SINYAL TEKNIKAL:
+    - Skor Konfluensi: ${techData.bullishCount > techData.bearishCount ? `${techData.bullishCount} dari 3 Sinyal Bullish` : `${techData.bearishCount} dari 3 Sinyal Bearish`}
+    - Konsensus Algoritma: **${techData.consensusSignal}**
+
+    DETAIL INDIKATOR:
+    - Harga Terakhir: ${formattedLastClose}
+    - Trend (${techData.trend.name} ${techData.trend.fastPeriod}/${techData.trend.slowPeriod}): Fast ${techData.trend.fastValue ? formatCurrency(techData.trend.fastValue, currency) : "-"}, Slow ${techData.trend.slowValue ? formatCurrency(techData.trend.slowValue, currency) : "-"}, Status (${techData.trend.crossoverStatus})
+    - Momentum (${techData.momentum.name}): RSI ${techData.momentum.rsiValue?.toFixed(2)}, Sinyal ${techData.momentum.signal}
+    - Volume (${techData.volume.name}): Sinyal ${techData.volume.signal}
+
+    ATURAN FORMAT PENULISAN:
+    1. Selalu sebutkan nominal harga/level teknikal dalam teks analisis menggunakan format mata uang yang sesuai (${currency === "IDR" ? "Rupiah seperti Rp 6.050" : "Dollar seperti $95,000"}).
+    2. Jelaskan makna konfluensi indikator secara alami tanpa istilah teknis kaku.
+
+    Berikan jawaban JSON murni sesuai skema:
+    {
+      "summary": "Ringkasan kesimpulan sinyal dalam 1-2 kalimat.",
+      "recommendation": "Beli" | "Jual" | "Tahan" | "Wait & See",
+      "riskLevel": "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi",
+      "trendAnalysis": "Penjelasan rinci tren.",
+      "momentumAnalysis": "Penjelasan rinci momentum.",
+      "volumeAnalysis": "Penjelasan rinci akumulasi/distribusi volume.",
+      "keyLevels": {
+        "support": [number, number],
+        "resistance": [number, number]
+      }
+    }
+  `;
+
+  try {
+    const ai = createAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const text = response.text || "{}";
+    return JSON.parse(text) as AIAnalysisResponse;
+  } catch (error) {
+    console.error("AI Analysis Error:", error);
+    return {
+      summary: "Gagal memproses analisis AI untuk saat ini.",
+      recommendation: "Wait & See",
+      riskLevel: "Sedang",
+      trendAnalysis: "Analisis tren tidak tersedia.",
+      momentumAnalysis: "Analisis momentum tidak tersedia.",
+      volumeAnalysis: "Analisis volume tidak tersedia.",
+      keyLevels: { support: [], resistance: [] },
+    };
+  }
 }

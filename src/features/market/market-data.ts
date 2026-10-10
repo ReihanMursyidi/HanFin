@@ -206,7 +206,7 @@ export async function getStockMarketData(): Promise<MarketAsset[]> {
 export async function getStockChartData(
   symbol: string,
   period1: string,
-  interval: "1d" | "1wk" | "1mo" = "1d",
+  interval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d",
 ): Promise<OHLCData[]> {
   try {
     const yahooSymbol = symbol === "IHSG" ? "^JKSE" : `${symbol}.JK`;
@@ -229,7 +229,7 @@ export async function getStockChartData(
     const quotes = chartResult.quotes || [];
 
     // Filter baris data yang mengandung nilai null dari Yahoo Finance
-    // Antisipasi pasar saham libur
+    // Untuk skenario pasar saham libur
     const validQuotes = quotes.filter(
       (q) =>
         q &&

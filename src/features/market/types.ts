@@ -74,14 +74,19 @@ export interface CreateMarketTransactionInput {
   notes?: string;
 }
 
+// Pilihan Metode Trading
+export type TradingStrategy =
+  "scalping" | "day_trading" | "swing_trading" | "investing";
+
 // Kategori Indikator AI Agent
-export type TrendIndicator = "SMA" | "EMA" | "SUPERTREND" | "ADX";
+export type TrendIndicator = "SMA" | "EMA" | "ADX";
 export type MomentumIndicator = "RSI" | "MACD" | "STOCHASTIC";
 export type VolumeIndicator = "OBV" | "VWAP" | "VOLUME_PROFILE";
 
 export interface AIAnalysisRequest {
   symbol: string;
   asset_type: AssetType;
+  strategy: TradingStrategy;
   trend_indicator: TrendIndicator;
   momentum_indicator: MomentumIndicator;
   volume_indicator: VolumeIndicator;
