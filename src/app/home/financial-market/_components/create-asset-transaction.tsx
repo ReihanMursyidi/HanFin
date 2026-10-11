@@ -144,7 +144,6 @@ export function CreateAssetTransaction({
             </div>
           )}
 
-          {/* 1. Tipe Transaksi (Beli / Jual) */}
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
@@ -172,7 +171,6 @@ export function CreateAssetTransaction({
             </Button>
           </div>
 
-          {/* 2. Pilih / Ketik Simbol Aset */}
           <div className="space-y-1.5">
             <Label className="text-xs">Aset</Label>
             <Select value={symbol} onValueChange={handleSymbolChange}>
@@ -193,7 +191,6 @@ export function CreateAssetTransaction({
             </Select>
           </div>
 
-          {/* 3. Input Jumlah (Lot untuk Saham, Unit/Token untuk Kripto) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">
@@ -231,7 +228,6 @@ export function CreateAssetTransaction({
             </div>
           </div>
 
-          {/* 4. Total Transaksi (Kalkulasi Otomatis) */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               Total Estimasi:
@@ -241,7 +237,6 @@ export function CreateAssetTransaction({
             </span>
           </div>
 
-          {/* 5. Catatan Tambahan */}
           <div className="space-y-1.5">
             <Label className="text-xs">Catatan (Opsional)</Label>
             <Input

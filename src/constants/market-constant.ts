@@ -1,18 +1,15 @@
 import { z } from "zod";
 
-// ==========================================
 // 1. DAFTAR ASET & OPTIONS UI
-// ==========================================
-
 export interface StockAssetConfig {
-  symbol: string; // Yahoo Finance Symbol (misal: "^JKSE", "BBCA.JK")
-  shortSymbol: string; // Kode Ringkas UI (misal: "IHSG", "BBCA")
+  symbol: string;
+  shortSymbol: string;
   name: string;
 }
 
 export interface CryptoAssetConfig {
-  symbol: string; // Binance Ticker Symbol (misal: "BTCUSDT")
-  shortSymbol: string; // Kode Ringkas UI (misal: "BTC")
+  symbol: string;
+  shortSymbol: string;
   name: string;
 }
 
@@ -42,10 +39,7 @@ export const UI_CRYPTO_OPTIONS = CRYPTO_ASSETS.map((c) => ({
   name: c.name,
 }));
 
-// ==========================================
 // 2. CONSTANTS & ENUMS (TUPLE AS CONST)
-// ==========================================
-
 export const ASSET_TYPES = ["stocks", "crypto"] as const;
 export const TRANSACTION_TYPES = ["buy", "sell"] as const;
 export const CURRENCIES = ["IDR", "USD"] as const;
@@ -60,9 +54,7 @@ export const TREND_INDICATORS = ["SMA", "EMA", "ADX"] as const;
 export const MOMENTUM_INDICATORS = ["RSI", "MACD", "STOCHASTIC"] as const;
 export const VOLUME_INDICATORS = ["OBV", "VWAP", "VOLUME_PROFILE"] as const;
 
-// ==========================================
 // 3. ZOD SCHEMAS
-// ==========================================
 
 // Schema Tambah Transaksi Pasar
 export const createMarketTransactionSchema = z.object({
@@ -129,10 +121,7 @@ export const aiAnalysisResponseSchema = z.object({
   }),
 });
 
-// ==========================================
 // 4. INFERRED TYPESCRIPT TYPES
-// ==========================================
-
 export type AssetType = (typeof ASSET_TYPES)[number];
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 export type Currency = (typeof CURRENCIES)[number];

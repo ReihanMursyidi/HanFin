@@ -134,7 +134,6 @@ export function UpdateAssetTransaction({
             </div>
           )}
 
-          {/* Tipe Transaksi */}
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
@@ -162,7 +161,6 @@ export function UpdateAssetTransaction({
             </Button>
           </div>
 
-          {/* Aset */}
           <div className="space-y-1.5">
             <Label className="text-xs">Aset</Label>
             <Select value={symbol} onValueChange={handleSymbolChange}>
@@ -183,7 +181,6 @@ export function UpdateAssetTransaction({
             </Select>
           </div>
 
-          {/* Input Kuantitas & Harga */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">
@@ -219,7 +216,6 @@ export function UpdateAssetTransaction({
             </div>
           </div>
 
-          {/* Total Kalkulasi */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               Total Estimasi:
@@ -229,7 +225,6 @@ export function UpdateAssetTransaction({
             </span>
           </div>
 
-          {/* Catatan */}
           <div className="space-y-1.5">
             <Label className="text-xs">Catatan (Opsional)</Label>
             <Input

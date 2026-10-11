@@ -86,7 +86,6 @@ export function TransactionSection({
                     )}
                   </div>
 
-                  {/* Tombol Aksi Update & Delete Langsung di TransactionSection */}
                   <div className="flex items-center gap-0.5 border-l border-border/60 pl-2">
                     <Button
                       variant="ghost"
@@ -117,7 +116,6 @@ export function TransactionSection({
         )}
       </CardContent>
 
-      {/* Dialog Edit Controlled */}
       {editingTx && (
         <UpdateAssetTransaction
           key={editingTx.id}
@@ -129,7 +127,6 @@ export function TransactionSection({
         />
       )}
 
-      {/* Dialog Hapus Controlled */}
       {deletingTx && (
         <DeleteAssetTransaction
           open={!!deletingTx}

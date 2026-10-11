@@ -66,8 +66,7 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
   }));
 
   return (
-    <div className="py-6 space-y-6 max-w-full">
-      {/* Header Halaman Dinamis */}
+    <div className="container py-2 space-y-6 max-w-7xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight capitalize">
           {assetType} Market
@@ -81,7 +80,6 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
         </p>
       </div>
 
-      {/* Top Section: Ringkasan Portofolio & Native Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-3 h-full">
           <PortfolioCard
@@ -100,13 +98,10 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Tabel Harga Aset Real-time */}
       <MarketAssetsTable assets={marketAssets} currency={currency} />
 
-      {/* Input Cepat via AI/Suara */}
       <MarketWizardInput assetType={assetType} />
 
-      {/* Bottom Section: Histori Transaksi & AI Predictor Agent */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-7">
           <TransactionSection

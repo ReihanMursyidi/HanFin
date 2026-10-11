@@ -10,23 +10,19 @@ import ChatbotDrawer from "./dashboard/_components/chatbot-drawer";
 export default function HomeLayout({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
-      <SidebarProvider>
-        {/* 1. Global Utilities & Guards */}
+      <SidebarProvider className="h-svh overflow-hidden">
         <IdleTimer timeoutMinutes={15} />
         <ProfileGuard />
 
-        {/* 2. Navigasi Samping */}
         <AppSidebar />
 
-        {/* 3. Area Konten Utama */}
-        <ScrollArea className="flex-1 h-screen bg-background">
-          <main className="p-4 md:p-6 lg:p-8">
+        <ScrollArea className="flex-1 h-svh bg-background">
+          <main className="p-4 md:p-6 lg:p-8 pb-20 md:pb-24">
             <SidebarTrigger className="mb-4 md:hidden" />
             {children}
           </main>
         </ScrollArea>
 
-        {/* 4. Floating UI */}
         <ChatbotDrawer />
       </SidebarProvider>
     </TooltipProvider>

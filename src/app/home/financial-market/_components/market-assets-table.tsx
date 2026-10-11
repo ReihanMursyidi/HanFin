@@ -96,7 +96,6 @@ export function MarketAssetsTable({
           <TableBody>
             {assets.map((asset) => (
               <TableRow key={asset.symbol}>
-                {/* 1. Kolom Logo */}
                 <TableCell className="pl-6 pr-0 w-12">
                   <AssetLogo
                     symbol={asset.symbol}
@@ -105,7 +104,6 @@ export function MarketAssetsTable({
                   />
                 </TableCell>
 
-                {/* 2. Kolom Nama Aset */}
                 <TableCell className="text-left font-medium">
                   <div className="flex flex-col">
                     <span className="font-semibold text-foreground leading-snug">
@@ -117,7 +115,6 @@ export function MarketAssetsTable({
                   </div>
                 </TableCell>
 
-                {/* 3. Kolom Harga */}
                 <TableCell className="text-center font-semibold">
                   {currency === "IDR"
                     ? convertToIDR(asset.price)
@@ -127,7 +124,6 @@ export function MarketAssetsTable({
                       })}`}
                 </TableCell>
 
-                {/* 4. Kolom 24h Change */}
                 <TableCell
                   className={`text-center font-semibold ${
                     asset.change24h >= 0 ? "text-emerald-500" : "text-rose-500"

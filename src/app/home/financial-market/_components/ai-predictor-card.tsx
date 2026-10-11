@@ -142,7 +142,6 @@ export function AiPredictorCard({
       </CardHeader>
 
       <CardContent className="pt-4 space-y-4">
-        {/* 1. Form Search Selection Aset */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
             <Search className="size-3 text-primary" /> Pilih Aset Diprediksi
@@ -211,7 +210,6 @@ export function AiPredictorCard({
           </Popover>
         </div>
 
-        {/* 2. Selector Metode Trading */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
             <Target className="size-3 text-primary" /> Metode Trading
@@ -240,7 +238,6 @@ export function AiPredictorCard({
           </Select>
         </div>
 
-        {/* 3. Selector 3 Indikator per Kategori */}
         <div className="grid grid-cols-3 gap-2 pt-1 border-t">
           <div>
             <label className="text-[10px] font-medium text-muted-foreground uppercase">
@@ -300,7 +297,6 @@ export function AiPredictorCard({
           </div>
         </div>
 
-        {/* 4. Action Button */}
         <Button
           className="w-full h-9 text-xs font-medium"
           onClick={handleGenerate}
@@ -319,7 +315,6 @@ export function AiPredictorCard({
           )}
         </Button>
 
-        {/* 5. Output Analisis AI */}
         {analysis && (
           <div className="space-y-3 pt-2 border-t text-xs">
             <div className="flex items-center justify-between p-2 rounded-lg bg-primary/10">
@@ -333,7 +328,6 @@ export function AiPredictorCard({
               </div>
             </div>
 
-            {/* Target Harga untuk Limit Order */}
             {analysis.targetPrices && (
               <div className="grid grid-cols-3 gap-2 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-center">
                 <div className="space-y-0.5">
@@ -384,7 +378,6 @@ export function AiPredictorCard({
               </ul>
             </div>
 
-            {/* Key Levels */}
             {analysis.keyLevels && (
               <div className="pt-2 border-t space-y-1.5">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
