@@ -50,7 +50,7 @@ const STRATEGY_LABELS: Record<TradingStrategy, string> = {
 };
 
 const STOCK_ASSETS = [
-  { symbol: "IHSG", name: "IHSG (Composite Index)" },
+  { symbol: "IHSG", name: "Indeks Harga Saham Gabungan" },
   { symbol: "BBCA", name: "Bank Central Asia" },
   { symbol: "BBRI", name: "Bank Rakyat Indonesia" },
   { symbol: "BMRI", name: "Bank Mandiri" },
@@ -66,7 +66,7 @@ const CRYPTO_ASSETS = [
 
 interface AiPredictorCardProps {
   assetType: AssetType;
-  currency?: Currency; // 👈 Menerima mata uang preferensi pengguna
+  currency?: Currency;
 }
 
 export function AiPredictorCard({
@@ -74,10 +74,9 @@ export function AiPredictorCard({
   currency = "IDR",
 }: AiPredictorCardProps) {
   const assetList = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
-
   const [prevAssetType, setPrevAssetType] = useState(assetType);
   const [symbol, setSymbol] = useState(assetList[0].symbol);
-
+  const selectedAsset = assetList.find((a) => a.symbol === symbol);
   if (assetType !== prevAssetType) {
     setPrevAssetType(assetType);
     setSymbol(assetList[0].symbol);
@@ -153,8 +152,8 @@ export function AiPredictorCard({
                 aria-expanded={openSearch}
                 className="w-full justify-between h-9 text-xs font-semibold"
               >
-                {symbol
-                  ? assetList.find((a) => a.symbol === symbol)?.name || symbol
+                {selectedAsset
+                  ? `${selectedAsset.symbol} (${selectedAsset.name})`
                   : "Cari Aset..."}
                 <ChevronsUpDown className="ml-2 size-3 shrink-0 opacity-50" />
               </Button>

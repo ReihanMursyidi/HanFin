@@ -12,7 +12,7 @@ interface MarketWizardInputProps {
 
 export function MarketWizardInput({ assetType }: MarketWizardInputProps) {
   return (
-    <Card className="w-full shadow-sm border-primary/20 bg-primary/5">
+    <Card className="w-full shadow-sm border-primary/20">
       <CardContent className="p-4 flex items-center gap-3">
         <Sparkles className="size-5 text-primary" />
         <Input
