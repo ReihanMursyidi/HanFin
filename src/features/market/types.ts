@@ -96,6 +96,11 @@ export interface AIAnalysisResponse {
   summary: string;
   recommendation: "Beli" | "Jual" | "Tahan" | "Wait & See";
   riskLevel: "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi";
+  targetPrices?: {
+    entryPrice: number; // Area Harga Beli
+    takeProfit: number; // Target Harga Jual
+    stopLoss: number; // Batas Risiko / Cut Loss
+  };
   trendAnalysis: string;
   momentumAnalysis: string;
   volumeAnalysis: string;

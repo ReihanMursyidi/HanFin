@@ -109,7 +109,7 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
           />
         </div>
         <div className="lg:col-span-5">
-          <AiPredictorCard assetType={assetType} />
+          <AiPredictorCard assetType={assetType} currency={currency} />
         </div>
       </div>
     </div>

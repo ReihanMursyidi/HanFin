@@ -68,7 +68,6 @@ export async function getPortfolioAssets(
 
   if (!user) throw new Error("Unauthorized");
 
-  // Ambil data aset portofolio
   const { data: assets, error } = await supabase
     .from("portfolio_assets")
     .select("*")
@@ -79,7 +78,6 @@ export async function getPortfolioAssets(
   if (error) throw new Error(`Failed to fetch portfolio: ${error.message}`);
   if (!assets || assets.length === 0) return [];
 
-  // Ambil harga pasar real-time
   const fxRate = fxRateOverride || (await getExchangeRateUSDIDR());
   const marketData =
     assetType === "crypto"
@@ -172,7 +170,6 @@ export async function createMarketTransaction(
 
   if (!user) throw new Error("Unauthorized");
 
-  // Validasi sederhana
   if (input.quantity <= 0 || input.price_per_unit <= 0) {
     throw new Error("Jumlah unit dan harga per unit harus lebih besar dari 0");
   }
@@ -199,8 +196,8 @@ export async function createMarketTransaction(
   if (error)
     throw new Error(`Failed to create market transaction: ${error.message}`);
 
-  revalidatePath("home/financial-market/stocks");
-  revalidatePath("home/financial-market/crypto");
+  revalidatePath("/home/financial-market/stocks");
+  revalidatePath("/home/financial-market/crypto");
 
   return data;
 }
@@ -222,8 +219,8 @@ export async function deleteMarketTransaction(id: string) {
 
   if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
 
-  revalidatePath("home/financial-market/stocks");
-  revalidatePath("home/financial-market/crypto");
+  revalidatePath("/home/financial-market/stocks");
+  revalidatePath("/home/financial-market/crypto");
 
   return true;
 }
@@ -260,7 +257,6 @@ export async function analyzeMarketWithAI(
       ? await getCryptoChartData(request.symbol, cryptoInterval, 150)
       : await getStockChartData(request.symbol, period1, stockInterval);
 
-  // Fallback ke Data Harian ("1d") Jika Data Intraday Kosong/Kurang (< 20)
   let activeInterval: string =
     request.asset_type === "crypto" ? cryptoInterval : stockInterval;
 
@@ -272,30 +268,68 @@ export async function analyzeMarketWithAI(
         : await getStockChartData(request.symbol, "2024-01-01", "1d");
   }
 
+  // Ambil Kurs FX & Tentukan Base Currency Asli Aset
+  const fxRate = await getExchangeRateUSDIDR();
+  const baseCurrency: Currency =
+    request.asset_type === "crypto" ? "USD" : "IDR";
+
   // Kalkulasi Indikator & Format Harga
   const techData = calculateTechnicalIndicators(
     candles,
     request,
     activeInterval,
   );
-  const formattedLastClose = formatCurrency(techData.lastClose, currency);
+
+  const convertedLastClose = convertCurrency(
+    techData.lastClose,
+    baseCurrency,
+    currency,
+    fxRate,
+  );
+
+  const formattedLastClose = formatCurrency(convertedLastClose, currency);
+
+  const convertedFastValue = techData.trend.fastValue
+    ? convertCurrency(techData.trend.fastValue, baseCurrency, currency, fxRate)
+    : null;
+  const convertedSlowValue = techData.trend.slowValue
+    ? convertCurrency(techData.trend.slowValue, baseCurrency, currency, fxRate)
+    : null;
+
+  const convertedSupport = techData.keyLevels.support.map((val) =>
+    Math.round(convertCurrency(val, baseCurrency, currency, fxRate)),
+  );
+  const convertedResistance = techData.keyLevels.resistance.map((val) =>
+    Math.round(convertCurrency(val, baseCurrency, currency, fxRate)),
+  );
 
   const prompt = `
     Kamu adalah Analis Pasar Keuangan Profesional (Financial Market Predictor Agent).
     Analisis aset ${request.symbol} (${request.asset_type}) untuk metode **${request.strategy.toUpperCase()}** (Timeframe ${techData.timeframeUsed}).
 
+    MATA UANG TARGET ANALISIS: **${currency}**
+    Seluruh harga, batas support/resistance, dan rekomendasi targetPrices HARUS ditulis dalam mata uang **${currency}**.
+
     KONDISI SINYAL TEKNIKAL:
     - Skor Konfluensi: ${techData.bullishCount > techData.bearishCount ? `${techData.bullishCount} dari 3 Sinyal Bullish` : `${techData.bearishCount} dari 3 Sinyal Bearish`}
     - Konsensus Algoritma: **${techData.consensusSignal}**
 
-    DETAIL INDIKATOR:
-    - Harga Terakhir: ${formattedLastClose}
-    - Trend (${techData.trend.name} ${techData.trend.fastPeriod}/${techData.trend.slowPeriod}): Fast ${techData.trend.fastValue ? formatCurrency(techData.trend.fastValue, currency) : "-"}, Slow ${techData.trend.slowValue ? formatCurrency(techData.trend.slowValue, currency) : "-"}, Status (${techData.trend.crossoverStatus})
+    DETAIL INDIKATOR (DALAM ${currency}):
+    - Harga Terakhir: ${formattedLastClose} (Angka murni: ${convertedLastClose})
+    - Trend (${techData.trend.name} ${techData.trend.fastPeriod}/${techData.trend.slowPeriod}): Fast ${convertedFastValue ? formatCurrency(convertedFastValue, currency) : "-"}, Slow ${convertedSlowValue ? formatCurrency(convertedSlowValue, currency) : "-"}, Status (${techData.trend.crossoverStatus})
     - Momentum (${techData.momentum.name}): RSI ${techData.momentum.rsiValue?.toFixed(2)}, Sinyal ${techData.momentum.signal}
     - Volume (${techData.volume.name}): Sinyal ${techData.volume.signal}
+    - Level Support Terdekat (${currency}): [${convertedSupport.join(", ")}]
+    - Level Resistance Terdekat (${currency}): [${convertedResistance.join(", ")}]
 
-    ATURAN FORMAT PENULISAN:
-    1. Selalu sebutkan nominal harga/level teknikal dalam teks analisis menggunakan format mata uang yang sesuai (${currency === "IDR" ? "Rupiah seperti Rp 6.050" : "Dollar seperti $95,000"}).
+    ATURAN LIMIT ORDER (HARGA BELI & JUAL DALAM ${currency}):
+    1. Tentukan "entryPrice" (Harga Beli) rasional mendekati area Support terdekat atau harga penutupan terakhir (${currency}).
+    2. Tentukan "takeProfit" (Harga Jual) mendekati area Resistance terdekat (${currency}).
+    3. Tentukan "stopLoss" sedikit di bawah level Support terdekat untuk mengontrol risiko (${currency}).
+    4. Seluruh angka pada "targetPrices" harus berupa NOMOR MURNI (number) dalam mata uang ${currency} tanpa simbol/teks agar dapat diproses oleh sistem.
+
+    ATURAN FORMAT PENULISAN TEKS:
+    1. Selalu sebutkan nominal harga/level teknikal dalam teks analisis menggunakan format mata uang ${currency} (${currency === "IDR" ? "Rupiah seperti Rp 1.600.000.000" : "Dollar seperti $95,000"}).
     2. Jelaskan makna konfluensi indikator secara alami tanpa istilah teknis kaku.
 
     Berikan jawaban JSON murni sesuai skema:
@@ -303,6 +337,11 @@ export async function analyzeMarketWithAI(
       "summary": "Ringkasan kesimpulan sinyal dalam 1-2 kalimat.",
       "recommendation": "Beli" | "Jual" | "Tahan" | "Wait & See",
       "riskLevel": "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi",
+      "targetPrices": {
+        "entryPrice": number,
+        "takeProfit": number,
+        "stopLoss": number
+      },
       "trendAnalysis": "Penjelasan rinci tren.",
       "momentumAnalysis": "Penjelasan rinci momentum.",
       "volumeAnalysis": "Penjelasan rinci akumulasi/distribusi volume.",
@@ -316,7 +355,7 @@ export async function analyzeMarketWithAI(
   try {
     const ai = createAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.5-flash-lite",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

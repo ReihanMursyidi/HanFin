@@ -10,6 +10,9 @@ import {
   Search,
   Check,
   ChevronsUpDown,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ShieldX,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,17 +30,18 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { analyzeMarketWithAI } from "@/features/market/action";
+import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type {
   AIAnalysisResponse,
   AssetType,
+  Currency,
   MomentumIndicator,
   TradingStrategy,
   TrendIndicator,
   VolumeIndicator,
 } from "@/features/market/types";
 
-// Label strategi yang user-friendly
 const STRATEGY_LABELS: Record<TradingStrategy, string> = {
   scalping: "Scalping",
   day_trading: "Day Trade",
@@ -45,7 +49,6 @@ const STRATEGY_LABELS: Record<TradingStrategy, string> = {
   investing: "Investing",
 };
 
-// Daftar aset pencarian dinamis
 const STOCK_ASSETS = [
   { symbol: "IHSG", name: "IHSG (Composite Index)" },
   { symbol: "BBCA", name: "Bank Central Asia" },
@@ -63,23 +66,39 @@ const CRYPTO_ASSETS = [
 
 interface AiPredictorCardProps {
   assetType: AssetType;
+  currency?: Currency; // 👈 Menerima mata uang preferensi pengguna
 }
 
-export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
+export function AiPredictorCard({
+  assetType,
+  currency = "IDR",
+}: AiPredictorCardProps) {
   const assetList = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
 
+  const [prevAssetType, setPrevAssetType] = useState(assetType);
   const [symbol, setSymbol] = useState(assetList[0].symbol);
+
+  if (assetType !== prevAssetType) {
+    setPrevAssetType(assetType);
+    setSymbol(assetList[0].symbol);
+  }
+
   const [strategy, setStrategy] = useState<TradingStrategy>("swing_trading");
   const [trend, setTrend] = useState<TrendIndicator>("SMA");
   const [momentum, setMomentum] = useState<MomentumIndicator>("RSI");
   const [volume, setVolume] = useState<VolumeIndicator>("OBV");
 
-  // State Search Form Aset
   const [openSearch, setOpenSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysisResponse | null>(null);
+
+  // 👈 State untuk Mengunci Parameter yang Telah Di-analisis
+  const [analyzedParams, setAnalyzedParams] = useState<{
+    symbol: string;
+    strategy: TradingStrategy;
+  } | null>(null);
 
   const filteredAssets = assetList.filter(
     (a) =>
@@ -87,7 +106,6 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
       a.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // Single handler function
   const handleGenerate = async () => {
     setIsLoading(true);
     try {
@@ -100,9 +118,11 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
           momentum_indicator: momentum,
           volume_indicator: volume,
         },
-        assetType === "stocks" ? "IDR" : "USD",
+        currency, // 👈 Teruskan mata uang profil user
       );
       setAnalysis(result);
+      // 👈 Kunci parameter simbol & strategi saat hasil analisis berhasil dimuat
+      setAnalyzedParams({ symbol, strategy });
     } catch (err) {
       console.error("Gagal menjalankan AI Predictor:", err);
     } finally {
@@ -161,6 +181,7 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
                       onClick={() => {
                         setSymbol(asset.symbol);
                         setOpenSearch(false);
+                        setSearchQuery("");
                       }}
                       className={cn(
                         "w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center justify-between hover:bg-muted/50 transition-colors",
@@ -216,7 +237,6 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
 
         {/* 3. Selector 3 Indikator per Kategori */}
         <div className="grid grid-cols-3 gap-2 pt-1 border-t">
-          {/* Trend Indicator */}
           <div>
             <label className="text-[10px] font-medium text-muted-foreground uppercase">
               Trend
@@ -236,7 +256,6 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
             </Select>
           </div>
 
-          {/* Momentum Indicator */}
           <div>
             <label className="text-[10px] font-medium text-muted-foreground uppercase">
               Momentum
@@ -256,7 +275,6 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
             </Select>
           </div>
 
-          {/* Volume Indicator */}
           <div>
             <label className="text-[10px] font-medium text-muted-foreground uppercase">
               Volume
@@ -310,13 +328,50 @@ export function AiPredictorCard({ assetType }: AiPredictorCardProps) {
               </div>
             </div>
 
+            {/* Target Harga untuk Limit Order */}
+            {analysis.targetPrices && (
+              <div className="grid grid-cols-3 gap-2 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-center">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    <ArrowDownCircle className="size-3 text-emerald-500" />{" "}
+                    Harga Beli
+                  </span>
+                  <p className="font-bold text-foreground">
+                    {formatCurrency(analysis.targetPrices.entryPrice, currency)}
+                  </p>
+                </div>
+
+                <div className="space-y-0.5 border-x border-border/50 px-1">
+                  <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    <ArrowUpCircle className="size-3 text-primary" /> Target
+                    Jual
+                  </span>
+                  <p className="font-bold text-foreground">
+                    {formatCurrency(analysis.targetPrices.takeProfit, currency)}
+                  </p>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    <ShieldX className="size-3 text-rose-500" /> Stop Loss
+                  </span>
+                  <p className="font-bold text-rose-500">
+                    {formatCurrency(analysis.targetPrices.stopLoss, currency)}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <p className="text-muted-foreground leading-relaxed">
               {analysis.summary}
             </p>
 
             <div className="space-y-1 bg-muted/20 p-2.5 rounded-lg">
+              {/* 👈 Menggunakan parameter terkunci yang tersimpan saat analisis dihasilkan */}
               <p className="font-semibold text-foreground">
-                Detail Analisis: {symbol} ({STRATEGY_LABELS[strategy]})
+                Detail Analisis: {analyzedParams?.symbol} (
+                {analyzedParams ? STRATEGY_LABELS[analyzedParams.strategy] : ""}
+                )
               </p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>{analysis.trendAnalysis}</li>

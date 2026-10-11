@@ -115,11 +115,14 @@ export const getCryptoChartData = unstable_cache(
 
       const seenTimes = new Set<string>();
       const result: OHLCData[] = [];
+      const isIntraday = interval === "15m" || interval === "1h";
 
       for (const kline of klines) {
-        const timeStr = new Date(Number(kline[0])).toISOString().split("T")[0];
+        const dateObj = new Date(Number(kline[0]));
+        const timeStr = isIntraday
+          ? dateObj.toISOString().replace("T", " ").substring(0, 16)
+          : dateObj.toISOString().split("T")[0];
 
-        // Memastikan tidak ada timestamp/tanggal duplikat yang merusak TradingView
         if (!seenTimes.has(timeStr)) {
           seenTimes.add(timeStr);
           result.push({
@@ -228,8 +231,6 @@ export async function getStockChartData(
 
     const quotes = chartResult.quotes || [];
 
-    // Filter baris data yang mengandung nilai null dari Yahoo Finance
-    // Untuk skenario pasar saham libur
     const validQuotes = quotes.filter(
       (q) =>
         q &&
@@ -243,14 +244,23 @@ export async function getStockChartData(
         q.close !== null,
     );
 
-    return validQuotes.map((data): OHLCData => ({
-      time: new Date(data.date).toISOString().split("T")[0],
-      open: Number(data.open),
-      high: Number(data.high),
-      low: Number(data.low),
-      close: Number(data.close),
-      volume: Number(data.volume || 0),
-    }));
+    const isIntraday = interval === "15m" || interval === "1h";
+
+    return validQuotes.map((data): OHLCData => {
+      const dateObj = new Date(data.date);
+      const timeStr = isIntraday
+        ? dateObj.toISOString().replace("T", " ").substring(0, 16)
+        : dateObj.toISOString().split("T")[0];
+
+      return {
+        time: timeStr,
+        open: Number(data.open),
+        high: Number(data.high),
+        low: Number(data.low),
+        close: Number(data.close),
+        volume: Number(data.volume || 0),
+      };
+    });
   } catch (error) {
     console.error(`Stock Chart Error for ${symbol}:`, error);
     return [];
