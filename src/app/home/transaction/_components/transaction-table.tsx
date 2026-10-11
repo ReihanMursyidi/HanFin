@@ -216,7 +216,7 @@ export default function TransactionTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="size-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                              className="size-8 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
                               onClick={() =>
                                 setSelectedTransaction({
                                   data: transaction,

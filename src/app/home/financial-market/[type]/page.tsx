@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { getFinancialProfile } from "@/features/profile/action";
 import {
+  getPortfolioAssets,
+  getMarketTransactions,
+} from "@/features/market/action";
+import {
   getCryptoChartData,
   getCryptoMarketData,
   getExchangeRateUSDIDR,
@@ -15,10 +19,6 @@ import { MarketAssetsTable } from "../_components/market-assets-table";
 import { MarketWizardInput } from "../_components/market-wizard-input";
 import { TransactionSection } from "../_components/transaction-section";
 import { AiPredictorCard } from "../_components/ai-predictor-card";
-import {
-  getMarketTransactions,
-  getPortfolioAssets,
-} from "@/features/market/action";
 
 interface PageProps {
   params: Promise<{ type: string }>;
@@ -66,18 +66,22 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
   }));
 
   return (
-    <div className="container py-4 space-y-6 max-w-7xl">
+    <div className="py-6 space-y-6 max-w-full">
+      {/* Header Halaman Dinamis */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight capitalize text-primary">
+        <h1 className="text-2xl font-bold tracking-tight capitalize">
           {assetType} Market
         </h1>
-        <p className="text-sm mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Pantau pergerakan pasar{" "}
-          {assetType === "stocks" ? "Saham Indonesia" : "Crypto"} real-time,
-          analisis dengan AI, dan kelola portofolio.
+          {assetType === "stocks"
+            ? "Saham Indonesia (IHSG)"
+            : "Kripto (Crypto)"}{" "}
+          real-time, analisis dengan AI, dan kelola portofolio.
         </p>
       </div>
 
+      {/* Top Section: Ringkasan Portofolio & Native Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-3 h-full">
           <PortfolioCard
@@ -96,10 +100,13 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Tabel Harga Aset Real-time */}
       <MarketAssetsTable assets={marketAssets} currency={currency} />
 
+      {/* Input Cepat via AI/Suara */}
       <MarketWizardInput assetType={assetType} />
 
+      {/* Bottom Section: Histori Transaksi & AI Predictor Agent */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-7">
           <TransactionSection

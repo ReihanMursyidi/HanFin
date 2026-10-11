@@ -13,6 +13,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   ShieldX,
+  Layers,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,16 +68,20 @@ const CRYPTO_ASSETS = [
 interface AiPredictorCardProps {
   assetType: AssetType;
   currency?: Currency;
+  className?: string;
 }
 
 export function AiPredictorCard({
   assetType,
   currency = "IDR",
+  className,
 }: AiPredictorCardProps) {
   const assetList = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
+
   const [prevAssetType, setPrevAssetType] = useState(assetType);
   const [symbol, setSymbol] = useState(assetList[0].symbol);
   const selectedAsset = assetList.find((a) => a.symbol === symbol);
+
   if (assetType !== prevAssetType) {
     setPrevAssetType(assetType);
     setSymbol(assetList[0].symbol);
@@ -93,7 +98,6 @@ export function AiPredictorCard({
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysisResponse | null>(null);
 
-  // 👈 State untuk Mengunci Parameter yang Telah Di-analisis
   const [analyzedParams, setAnalyzedParams] = useState<{
     symbol: string;
     strategy: TradingStrategy;
@@ -117,10 +121,9 @@ export function AiPredictorCard({
           momentum_indicator: momentum,
           volume_indicator: volume,
         },
-        currency, // 👈 Teruskan mata uang profil user
+        currency,
       );
       setAnalysis(result);
-      // 👈 Kunci parameter simbol & strategi saat hasil analisis berhasil dimuat
       setAnalyzedParams({ symbol, strategy });
     } catch (err) {
       console.error("Gagal menjalankan AI Predictor:", err);
@@ -130,8 +133,8 @@ export function AiPredictorCard({
   };
 
   return (
-    <Card className="w-full shadow-sm border-primary/20">
-      <CardHeader className="pb-3 border-b">
+    <Card className={cn("w-full shadow-sm border-primary/20", className)}>
+      <CardHeader className="pb-3 border-b shrink-0">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <Sparkles className="size-4 text-primary" />
           AI Market Predictor Agent
@@ -139,7 +142,7 @@ export function AiPredictorCard({
       </CardHeader>
 
       <CardContent className="pt-4 space-y-4">
-        {/* 1. Search Form Selection Aset */}
+        {/* 1. Form Search Selection Aset */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
             <Search className="size-3 text-primary" /> Pilih Aset Diprediksi
@@ -158,7 +161,10 @@ export function AiPredictorCard({
                 <ChevronsUpDown className="ml-2 size-3 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-2" align="start">
+            <PopoverContent
+              className="w-[320px] p-2 overflow-hidden"
+              align="start"
+            >
               <div className="flex items-center border-b px-2 pb-2 mb-2">
                 <Search className="mr-2 size-3.5 shrink-0 opacity-50" />
                 <Input
@@ -366,7 +372,6 @@ export function AiPredictorCard({
             </p>
 
             <div className="space-y-1 bg-muted/20 p-2.5 rounded-lg">
-              {/* 👈 Menggunakan parameter terkunci yang tersimpan saat analisis dihasilkan */}
               <p className="font-semibold text-foreground">
                 Detail Analisis: {analyzedParams?.symbol} (
                 {analyzedParams ? STRATEGY_LABELS[analyzedParams.strategy] : ""}
@@ -378,6 +383,33 @@ export function AiPredictorCard({
                 <li>{analysis.volumeAnalysis}</li>
               </ul>
             </div>
+
+            {/* Key Levels */}
+            {analysis.keyLevels && (
+              <div className="pt-2 border-t space-y-1.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                  <Layers className="size-3 text-primary" /> Key Levels Terdekat
+                </span>
+                <div className="flex items-center justify-between text-[11px] bg-muted/30 p-2 rounded-md">
+                  <div>
+                    <span className="text-muted-foreground">Support: </span>
+                    <span className="font-semibold text-emerald-500">
+                      {analysis.keyLevels.support
+                        .map((val) => formatCurrency(val, currency))
+                        .join(" | ")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Resistance: </span>
+                    <span className="font-semibold text-rose-500">
+                      {analysis.keyLevels.resistance
+                        .map((val) => formatCurrency(val, currency))
+                        .join(" | ")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

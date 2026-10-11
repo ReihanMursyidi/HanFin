@@ -12,7 +12,6 @@ import type {
   AIAnalysisRequest,
   AIAnalysisResponse,
   AssetType,
-  CreateMarketTransactionInput,
   Currency,
   MarketTransaction,
   OHLCData,
@@ -22,6 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { convertCurrency, formatCurrency } from "@/lib/format";
 import { calculateTechnicalIndicators } from "./technical-analysis";
 import { createAI } from "../ai/instance";
+import { aiAnalysisRequestSchema, aiAnalysisResponseSchema, createMarketTransactionSchema, updateMarketTransactionSchema } from "@/constants/market-constant";
 
 // Server Action untuk mengambil data candlestick berdasarkan timeframe
 export async function getMarketChartData(
@@ -159,9 +159,7 @@ export async function getMarketTransactions(
 }
 
 // ==== TRANSAKSI: CREATE (BUY / SELL) ====
-export async function createMarketTransaction(
-  input: CreateMarketTransactionInput,
-) {
+export async function createMarketTransaction(rawInput: unknown) {
   const supabase = await createClient();
 
   const {
@@ -170,9 +168,8 @@ export async function createMarketTransaction(
 
   if (!user) throw new Error("Unauthorized");
 
-  if (input.quantity <= 0 || input.price_per_unit <= 0) {
-    throw new Error("Jumlah unit dan harga per unit harus lebih besar dari 0");
-  }
+  // Validasi Runtime Zod
+  const input = createMarketTransactionSchema.parse(rawInput);
 
   const payload = {
     user_id: user.id,
@@ -182,7 +179,7 @@ export async function createMarketTransaction(
     transaction_type: input.transaction_type,
     quantity: input.quantity,
     price_per_unit: input.price_per_unit,
-    total_amount: input.total_amount || input.quantity * input.price_per_unit,
+    total_amount: input.total_amount,
     currency: input.currency,
     notes: input.notes || null,
   };
@@ -195,6 +192,36 @@ export async function createMarketTransaction(
 
   if (error)
     throw new Error(`Failed to create market transaction: ${error.message}`);
+
+  revalidatePath("/home/financial-market/stocks");
+  revalidatePath("/home/financial-market/crypto");
+
+  return data;
+}
+
+export async function updateMarketTransaction(rawInput: unknown) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  // Validasi Runtime Zod
+  const input = updateMarketTransactionSchema.parse(rawInput);
+  const { id, ...updatePayload } = input;
+
+  const { data, error } = await supabase
+    .from("market_transactions")
+    .update(updatePayload)
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error)
+    throw new Error(`Failed to update market transaction: ${error.message}`);
 
   revalidatePath("/home/financial-market/stocks");
   revalidatePath("/home/financial-market/crypto");
@@ -226,9 +253,10 @@ export async function deleteMarketTransaction(id: string) {
 }
 
 export async function analyzeMarketWithAI(
-  request: AIAnalysisRequest,
+  rawRequest: AIAnalysisRequest,
   currency: Currency = "IDR",
 ): Promise<AIAnalysisResponse> {
+  const request = aiAnalysisRequestSchema.parse(rawRequest);
   let cryptoInterval: string = "1d";
   let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
   let period1 = "2024-01-01";
@@ -362,8 +390,15 @@ export async function analyzeMarketWithAI(
       },
     });
 
-    const text = response.text || "{}";
-    return JSON.parse(text) as AIAnalysisResponse;
+    const parsedJson = JSON.parse(response.text || "{}");
+    const safeResponse = aiAnalysisResponseSchema.safeParse(parsedJson);
+
+    if (!safeResponse.success) {
+      console.error("AI Response Schema Invalid:", safeResponse.error.format());
+      throw new Error("Respon AI tidak sesuai format skema");
+    }
+
+    return safeResponse.data;
   } catch (error) {
     console.error("AI Analysis Error:", error);
     return {
