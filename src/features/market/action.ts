@@ -21,7 +21,88 @@ import { createClient } from "@/lib/supabase/server";
 import { convertCurrency, formatCurrency } from "@/lib/format";
 import { calculateTechnicalIndicators } from "./technical-analysis";
 import { createAI } from "../ai/instance";
-import { aiAnalysisRequestSchema, aiAnalysisResponseSchema, createMarketTransactionSchema, updateMarketTransactionSchema } from "@/constants/market-constant";
+import {
+  aiAnalysisRequestSchema,
+  aiAnalysisResponseSchema,
+  createMarketTransactionSchema,
+} from "@/constants/market-constant";
+
+// SYNC / RECALCULATE PORTFOLIO ASSET
+export async function syncPortfolioAsset(
+  userId: string,
+  symbol: string,
+  assetType: AssetType,
+) {
+  const supabase = await createClient();
+
+  const { data: transactions, error } = await supabase
+    .from("market_transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("symbol", symbol.toUpperCase())
+    .order("transaction_date", { ascending: true });
+
+  if (error) {
+    throw new Error(`Gagal menyelaraskan portfolio: ${error.message}`);
+  }
+
+  if (!transactions || transactions.length === 0) {
+    await supabase
+      .from("portfolio_assets")
+      .delete()
+      .eq("user_id", userId)
+      .eq("symbol", symbol.toUpperCase());
+    return;
+  }
+
+  let totalQuantity = 0;
+  let totalCost = 0;
+
+  for (const tx of transactions) {
+    const qty = Number(tx.quantity);
+    const price = Number(tx.price_per_unit);
+
+    if (tx.transaction_type === "buy") {
+      totalQuantity += qty;
+      totalCost += qty * price;
+    } else if (tx.transaction_type === "sell") {
+      if (totalQuantity > 0) {
+        const currentAvgPrice = totalCost / totalQuantity;
+        totalQuantity -= qty;
+        totalCost -= qty * currentAvgPrice;
+      }
+    }
+  }
+
+  if (totalQuantity <= 0) {
+    await supabase
+      .from("portfolio_assets")
+      .delete()
+      .eq("user_id", userId)
+      .eq("symbol", symbol.toUpperCase());
+    return;
+  }
+
+  const avgBuyPrice = totalCost / totalQuantity;
+
+  const { error: upsertError } = await supabase.from("portfolio_assets").upsert(
+    {
+      user_id: userId,
+      symbol: symbol.toUpperCase(),
+      asset_name: transactions[0].asset_name,
+      asset_type: assetType,
+      total_quantity: totalQuantity,
+      avg_buy_price: avgBuyPrice,
+      currency: transactions[0].currency,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id, symbol" },
+  );
+
+  if (upsertError) {
+    throw new Error(`Gagal menyimpan portfolio: ${upsertError.message}`);
+  }
+}
 
 // Server Action untuk mengambil data candlestick berdasarkan timeframe
 export async function getMarketChartData(
@@ -52,6 +133,111 @@ export async function getMarketChartData(
     const period1 = period1Map[timeframe] || "2024-01-01";
     return getStockChartData(symbol, period1, interval);
   }
+}
+
+// ==== TRANSAKSI: CREATE (BUY / SELL) ====
+export async function createMarketTransaction(rawInput: unknown) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  // Validasi Runtime Zod
+  const input = createMarketTransactionSchema.parse(rawInput);
+
+  if (input.transaction_type === "sell") {
+    const { data: existingAsset } = await supabase
+      .from("portfolio_assets")
+      .select("total_quantity")
+      .eq("user_id", user.id)
+      .eq("symbol", input.symbol.toUpperCase())
+      .single();
+
+    const currentOwnedQuantity = existingAsset
+      ? Number(existingAsset.total_quantity)
+      : 0;
+
+    if (currentOwnedQuantity <= 0) {
+      throw new Error(
+        `Anda belum memiliki aset ${input.symbol}. Tambahkan transaksi Beli terlebih dahulu sebelum menjual.`,
+      );
+    }
+
+    if (input.quantity > currentOwnedQuantity) {
+      throw new Error(
+        `Jumlah penjualan (${input.quantity}) melebihi total aset ${input.symbol} yang Anda miliki (${currentOwnedQuantity}).`,
+      );
+    }
+  }
+
+  const payload = {
+    user_id: user.id,
+    symbol: input.symbol.toUpperCase(),
+    asset_name: input.asset_name,
+    asset_type: input.asset_type,
+    transaction_type: input.transaction_type,
+    quantity: input.quantity,
+    price_per_unit: input.price_per_unit,
+    total_amount: input.total_amount,
+    currency: input.currency,
+    notes: input.notes || null,
+  };
+
+  const { data, error } = await supabase
+    .from("market_transactions")
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error)
+    throw new Error(`Failed to create market transaction: ${error.message}`);
+
+  revalidatePath("/home/financial-market/stocks");
+  revalidatePath("/home/financial-market/crypto");
+
+  return data;
+}
+
+// ==== TRANSAKSI: DELETE ====
+export async function deleteMarketTransaction(id: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  // Ambil data transaksi sebelum dihapus untuk mengetahui simbol & asset_type
+  const { data: tx, error: fetchError } = await supabase
+    .from("market_transactions")
+    .select("symbol, asset_type")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError || !tx) {
+    throw new Error("Transaksi tidak ditemukan.");
+  }
+
+  const { error } = await supabase
+    .from("market_transactions")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
+
+  // Hitung ulang portofolio untuk simbol yang bersangkutan
+  await syncPortfolioAsset(user.id, tx.symbol, tx.asset_type as AssetType);
+
+  revalidatePath("/home/financial-market/stocks");
+  revalidatePath("/home/financial-market/crypto");
+
+  return true;
 }
 
 // ==== PORTOFOLIO: READ & CALCULATE PnL ====
@@ -158,105 +344,13 @@ export async function getMarketTransactions(
   }));
 }
 
-// ==== TRANSAKSI: CREATE (BUY / SELL) ====
-export async function createMarketTransaction(rawInput: unknown) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Unauthorized");
-
-  // Validasi Runtime Zod
-  const input = createMarketTransactionSchema.parse(rawInput);
-
-  const payload = {
-    user_id: user.id,
-    symbol: input.symbol.toUpperCase(),
-    asset_name: input.asset_name,
-    asset_type: input.asset_type,
-    transaction_type: input.transaction_type,
-    quantity: input.quantity,
-    price_per_unit: input.price_per_unit,
-    total_amount: input.total_amount,
-    currency: input.currency,
-    notes: input.notes || null,
-  };
-
-  const { data, error } = await supabase
-    .from("market_transactions")
-    .insert(payload)
-    .select()
-    .single();
-
-  if (error)
-    throw new Error(`Failed to create market transaction: ${error.message}`);
-
-  revalidatePath("/home/financial-market/stocks");
-  revalidatePath("/home/financial-market/crypto");
-
-  return data;
-}
-
-export async function updateMarketTransaction(rawInput: unknown) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Unauthorized");
-
-  // Validasi Runtime Zod
-  const input = updateMarketTransactionSchema.parse(rawInput);
-  const { id, ...updatePayload } = input;
-
-  const { data, error } = await supabase
-    .from("market_transactions")
-    .update(updatePayload)
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select()
-    .single();
-
-  if (error)
-    throw new Error(`Failed to update market transaction: ${error.message}`);
-
-  revalidatePath("/home/financial-market/stocks");
-  revalidatePath("/home/financial-market/crypto");
-
-  return data;
-}
-
-// ==== TRANSAKSI: DELETE ====
-export async function deleteMarketTransaction(id: string) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Unauthorized");
-
-  const { error } = await supabase
-    .from("market_transactions")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
-
-  revalidatePath("/home/financial-market/stocks");
-  revalidatePath("/home/financial-market/crypto");
-
-  return true;
-}
-
+// ==== ANALISIS AI
 export async function analyzeMarketWithAI(
   rawRequest: AIAnalysisRequest,
   currency: Currency = "IDR",
 ): Promise<AIAnalysisResponse> {
   const request = aiAnalysisRequestSchema.parse(rawRequest);
+
   let cryptoInterval: string = "1d";
   let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
   let period1 = "2024-01-01";

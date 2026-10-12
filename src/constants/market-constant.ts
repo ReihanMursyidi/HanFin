@@ -77,13 +77,6 @@ export const createMarketTransactionSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-// Schema Update Transaksi Pasar (Partial dari Create + Wajib ID)
-export const updateMarketTransactionSchema = createMarketTransactionSchema
-  .partial()
-  .extend({
-    id: z.string().uuid("ID transaksi tidak valid"),
-  });
-
 // Schema Request AI Analysis
 export const aiAnalysisRequestSchema = z.object({
   symbol: z.string().min(1, "Simbol aset wajib diisi"),
@@ -133,8 +126,6 @@ export type VolumeIndicator = (typeof VOLUME_INDICATORS)[number];
 export type CreateMarketTransactionInput = z.infer<
   typeof createMarketTransactionSchema
 >;
-export type UpdateMarketTransactionInput = z.infer<
-  typeof updateMarketTransactionSchema
->;
+
 export type AIAnalysisRequest = z.infer<typeof aiAnalysisRequestSchema>;
 export type AIAnalysisResponse = z.infer<typeof aiAnalysisResponseSchema>;

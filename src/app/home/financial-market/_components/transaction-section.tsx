@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { CreateAssetTransaction } from "./create-asset-transaction";
-import { UpdateAssetTransaction } from "./update-asset-transaction";
 import { DeleteAssetTransaction } from "./delete-asset-transaction";
 import type { AssetType, Currency } from "@/constants/market-constant";
 import { MarketTransaction } from "@/features/market/types";
@@ -22,7 +21,6 @@ export function TransactionSection({
   transactions,
   currency,
 }: TransactionSectionProps) {
-  const [editingTx, setEditingTx] = useState<MarketTransaction | null>(null);
   const [deletingTx, setDeletingTx] = useState<{
     id: string;
     symbol: string;
@@ -90,16 +88,6 @@ export function TransactionSection({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-7 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
-                      onClick={() => setEditingTx(tx)}
-                    >
-                      <Edit2 className="size-3.5" />
-                      <span className="sr-only">Edit Transaksi</span>
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
                       className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() =>
                         setDeletingTx({ id: tx.id, symbol: tx.symbol })
@@ -115,17 +103,6 @@ export function TransactionSection({
           </div>
         )}
       </CardContent>
-
-      {editingTx && (
-        <UpdateAssetTransaction
-          key={editingTx.id}
-          open={!!editingTx}
-          onOpenChange={(open) => !open && setEditingTx(null)}
-          transaction={editingTx}
-          assetType={assetType}
-          currency={currency}
-        />
-      )}
 
       {deletingTx && (
         <DeleteAssetTransaction
