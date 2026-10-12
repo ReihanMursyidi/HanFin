@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  DollarSign,
+  Search,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,34 +21,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { createMarketTransaction } from "@/features/market/action";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import {
+  UI_CRYPTO_OPTIONS,
+  UI_STOCK_OPTIONS,
+} from "@/constants/market-constant";
 import type {
   AssetType,
   Currency,
   TransactionType,
-} from "@/features/market/types";
-
-const POPULAR_STOCKS = [
-  { symbol: "BBCA", name: "Bank Central Asia" },
-  { symbol: "BBRI", name: "Bank Rakyat Indonesia" },
-  { symbol: "BMRI", name: "Bank Mandiri" },
-  { symbol: "TLKM", name: "Telkom Indonesia" },
-  { symbol: "ASII", name: "Astra International" },
-];
-
-const POPULAR_CRYPTO = [
-  { symbol: "BTC", name: "Bitcoin" },
-  { symbol: "ETH", name: "Ethereum" },
-  { symbol: "SOL", name: "Solana" },
-  { symbol: "BNB", name: "BNB" },
-];
+} from "@/constants/market-constant";
 
 interface CreateAssetTransactionProps {
   assetType: AssetType;
@@ -56,7 +51,8 @@ export function CreateAssetTransaction({
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const presetAssets = assetType === "stocks" ? POPULAR_STOCKS : POPULAR_CRYPTO;
+  const presetAssets =
+    assetType === "stocks" ? UI_STOCK_OPTIONS : UI_CRYPTO_OPTIONS;
 
   // Form State
   const [symbol, setSymbol] = useState(presetAssets[0].symbol);
@@ -67,13 +63,23 @@ export function CreateAssetTransaction({
   const [pricePerUnit, setPricePerUnit] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
-  // Update nama aset otomatis jika simbol dipilih dari preset
-  const handleSymbolChange = (val: string) => {
-    setSymbol(val);
-    const found = presetAssets.find((a) => a.symbol === val);
-    if (found) {
-      setAssetName(found.name);
-    }
+  // Search Combobox State
+  const [openSearch, setOpenSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const selectedAsset = presetAssets.find((a) => a.symbol === symbol);
+
+  const filteredAssets = presetAssets.filter(
+    (a) =>
+      a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const handleSelectAsset = (asset: { symbol: string; name: string }) => {
+    setSymbol(asset.symbol);
+    setAssetName(asset.name);
+    setOpenSearch(false);
+    setSearchQuery("");
   };
 
   const numQuantity = Number(quantity) || 0;
@@ -105,7 +111,7 @@ export function CreateAssetTransaction({
           price_per_unit: numPrice,
           total_amount: computedTotal,
           currency,
-          notes,
+          notes: notes || null,
         });
 
         // Reset Form & Close Modal
@@ -133,6 +139,7 @@ export function CreateAssetTransaction({
       <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
+            <DollarSign className="size-4 text-primary" />
             Catat Transaksi {assetType === "stocks" ? "Saham" : "Kripto"}
           </DialogTitle>
         </DialogHeader>
@@ -144,6 +151,7 @@ export function CreateAssetTransaction({
             </div>
           )}
 
+          {/* 1. Tipe Transaksi (Beli / Jual) */}
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
@@ -171,26 +179,68 @@ export function CreateAssetTransaction({
             </Button>
           </div>
 
+          {/* 2. Cari / Pilih Simbol Aset */}
           <div className="space-y-1.5">
             <Label className="text-xs">Aset</Label>
-            <Select value={symbol} onValueChange={handleSymbolChange}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Pilih Aset" />
-              </SelectTrigger>
-              <SelectContent>
-                {presetAssets.map((asset) => (
-                  <SelectItem
-                    key={asset.symbol}
-                    value={asset.symbol}
-                    className="text-xs"
-                  >
-                    {asset.symbol} - {asset.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={openSearch} onOpenChange={setOpenSearch}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openSearch}
+                  className="w-full justify-between h-9 text-xs font-semibold"
+                >
+                  {selectedAsset
+                    ? `${selectedAsset.symbol} (${selectedAsset.name})`
+                    : "Cari Aset..."}
+                  <ChevronsUpDown className="ml-2 size-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-93.75 p-2" align="start">
+                <div className="flex items-center border-b px-2 pb-2 mb-2">
+                  <Search className="mr-2 size-3.5 shrink-0 opacity-50" />
+                  <Input
+                    placeholder="Ketik nama atau simbol aset..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 text-xs border-0 focus-visible:ring-0 shadow-none"
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {filteredAssets.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">
+                      Aset tidak ditemukan.
+                    </p>
+                  ) : (
+                    filteredAssets.map((asset) => (
+                      <button
+                        key={asset.symbol}
+                        type="button"
+                        onClick={() => handleSelectAsset(asset)}
+                        className={cn(
+                          "w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center justify-between hover:bg-muted/50 transition-colors",
+                          symbol === asset.symbol &&
+                            "bg-primary/10 font-semibold text-primary",
+                        )}
+                      >
+                        <div>
+                          <span>{asset.symbol}</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">
+                            {asset.name}
+                          </span>
+                        </div>
+                        {symbol === asset.symbol && (
+                          <Check className="size-3 text-primary" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
+          {/* 3. Input Jumlah (Lot untuk Saham, Unit/Token untuk Kripto) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">
@@ -228,6 +278,7 @@ export function CreateAssetTransaction({
             </div>
           </div>
 
+          {/* 4. Total Transaksi (Kalkulasi Otomatis) */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               Total Estimasi:
@@ -237,6 +288,7 @@ export function CreateAssetTransaction({
             </span>
           </div>
 
+          {/* 5. Catatan Tambahan */}
           <div className="space-y-1.5">
             <Label className="text-xs">Catatan (Opsional)</Label>
             <Input
