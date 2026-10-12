@@ -25,8 +25,10 @@ export const STOCK_ASSETS: StockAssetConfig[] = [
 export const CRYPTO_ASSETS: CryptoAssetConfig[] = [
   { symbol: "BTCUSDT", shortSymbol: "BTC", name: "Bitcoin" },
   { symbol: "ETHUSDT", shortSymbol: "ETH", name: "Ethereum" },
-  { symbol: "SOLUSDT", shortSymbol: "SOL", name: "Solana" },
   { symbol: "BNBUSDT", shortSymbol: "BNB", name: "BNB" },
+  { symbol: "XRPUSDT", shortSymbol: "XRP", name: "Ripple" },
+  { symbol: "SOLUSDT", shortSymbol: "SOL", name: "Solana" },
+  { symbol: "HYPEUSDT", shortSymbol: "HYPE", name: "Hyperliquid" },
 ];
 
 export const UI_STOCK_OPTIONS = STOCK_ASSETS.map((s) => ({

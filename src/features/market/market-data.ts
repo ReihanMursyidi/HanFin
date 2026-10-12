@@ -3,6 +3,7 @@
 import { unstable_cache } from "next/cache";
 import { MarketAsset, OHLCData } from "./types";
 import YahooFinance from "yahoo-finance2";
+import { CRYPTO_ASSETS, STOCK_ASSETS } from "@/constants/market-constant";
 
 const yahooFinance = new YahooFinance({
   suppressNotices: ["ripHistorical", "yahooSurvey"],
@@ -45,13 +46,6 @@ export async function getExchangeRateUSDIDR(): Promise<number> {
 }
 
 // ==== CRYPTO MARKET (BINANCE PUBLIC REST API) ====
-const CRYPTO_SYMBOLS = [
-  { symbol: "BTCUSDT", name: "Bitcoin", short: "BTC" },
-  { symbol: "ETHUSDT", name: "Ethereum", short: "ETH" },
-  { symbol: "SOLUSDT", name: "Solana", short: "SOL" },
-  { symbol: "BNBUSDT", name: "BNB", short: "BNB" },
-];
-
 type BinanceTickerRaw = {
   symbol: string;
   lastPrice: string;
@@ -64,7 +58,7 @@ type BinanceTickerRaw = {
 export const getCryptoMarketData = unstable_cache(
   async (): Promise<MarketAsset[]> => {
     try {
-      const symbols = CRYPTO_SYMBOLS.map((c) => c.symbol);
+      const symbols = CRYPTO_ASSETS.map((c) => c.symbol);
       const symbolsParam = encodeURIComponent(JSON.stringify(symbols));
 
       const tickers = await fetchBinancePublic<BinanceTickerRaw[]>(
@@ -72,13 +66,15 @@ export const getCryptoMarketData = unstable_cache(
       );
 
       return tickers.map((ticker): MarketAsset => {
-        const cryptoMeta = CRYPTO_SYMBOLS.find(
+        const cryptoMeta = CRYPTO_ASSETS.find(
           (c) => c.symbol === ticker.symbol,
         );
 
         return {
           symbol:
-            cryptoMeta?.short || ticker.symbol.replace("USDT", "") || "UNKNOWN",
+            cryptoMeta?.shortSymbol ||
+            ticker.symbol.replace("USDT", "") ||
+            "UNKNOWN",
           name: cryptoMeta?.name || "Crypto Asset",
           asset_type: "crypto",
           price: Number(ticker.lastPrice),
@@ -147,14 +143,6 @@ export const getCryptoChartData = unstable_cache(
 );
 
 // ==== STOCKS MARKET (VIA YAHOO FINANCE) ====
-const STOCK_SYMBOLS = [
-  { symbol: "^JKSE", name: "IHSG (Index Harga Saham Gabungan)", short: "IHSG" },
-  { symbol: "BBCA.JK", name: "Bank Central Asia", short: "BBCA" },
-  { symbol: "BBRI.JK", name: "Bank Rakyat Indonesia", short: "BBRI" },
-  { symbol: "BMRI.JK", name: "Bank Mandiri", short: "BMRI" },
-  { symbol: "TLKM.JK", name: "Telkom Indonesia", short: "TLKM" },
-];
-
 type YahooStockQuote = {
   symbol?: string;
   longName?: string;
@@ -168,7 +156,7 @@ type YahooStockQuote = {
 
 export async function getStockMarketData(): Promise<MarketAsset[]> {
   try {
-    const queries = STOCK_SYMBOLS.map((s) => s.symbol);
+    const queries = STOCK_ASSETS.map((s) => s.symbol);
     const quotes = await Promise.all(
       queries.map(async (symbol) => {
         try {
@@ -185,11 +173,13 @@ export async function getStockMarketData(): Promise<MarketAsset[]> {
     );
 
     return validQuotes.map((quote): MarketAsset => {
-      const stockMeta = STOCK_SYMBOLS.find((s) => s.symbol === quote.symbol);
+      const stockMeta = STOCK_ASSETS.find((s) => s.symbol === quote.symbol);
 
       return {
         symbol:
-          stockMeta?.short || quote.symbol?.replace(".JK", "") || "UNKNOWN",
+          stockMeta?.shortSymbol ||
+          quote.symbol?.replace(".JK", "") ||
+          "UNKNOWN",
         name: stockMeta?.name || quote.longName || quote.shortName || "Stock",
         asset_type: "stocks",
         price: quote.regularMarketPrice || 0,
