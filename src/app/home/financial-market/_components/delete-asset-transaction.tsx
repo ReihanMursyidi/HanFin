@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { deleteMarketTransaction } from "@/features/market/action";
+import { toast } from "sonner";
 
 interface DeleteAssetTransactionProps {
   open: boolean;
@@ -33,8 +34,12 @@ export function DeleteAssetTransaction({
     startTransition(async () => {
       try {
         await deleteMarketTransaction(id);
+        toast.success(`Transaksi ${symbol} berhasil dihapus.`);
         onOpenChange(false);
       } catch (error) {
+        const msg =
+          error instanceof Error ? error.message : "Gagal menghapus transaksi.";
+        toast.error(msg);
         console.error("Gagal menghapus transaksi:", error);
       }
     });

@@ -37,6 +37,7 @@ import type {
   Currency,
   TransactionType,
 } from "@/constants/market-constant";
+import { toast } from "sonner";
 
 interface CreateAssetTransactionProps {
   assetType: AssetType;
@@ -114,15 +115,20 @@ export function CreateAssetTransaction({
           notes: notes || null,
         });
 
+        toast.success(
+          `Transaksi ${transactionType === "buy" ? "BELI" : "JUAL"} ${symbol} berhasil dicatat.`,
+        );
+
         // Reset Form & Close Modal
         setQuantity("");
         setPricePerUnit("");
         setNotes("");
         setOpen(false);
       } catch (err) {
-        setErrorMsg(
-          err instanceof Error ? err.message : "Gagal menyimpan transaksi.",
-        );
+        const msg =
+          err instanceof Error ? err.message : "Gagal menyimpan transaksi.";
+        setErrorMsg(msg);
+        toast.error(msg);
       }
     });
   };

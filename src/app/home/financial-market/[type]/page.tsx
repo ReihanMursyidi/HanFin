@@ -100,7 +100,7 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
 
       <MarketAssetsTable assets={marketAssets} currency={currency} />
 
-      <MarketWizardInput assetType={assetType} />
+      <MarketWizardInput assetType={assetType} currency={currency} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-7">

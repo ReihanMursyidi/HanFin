@@ -39,7 +39,7 @@ export function convertCurrency(
   amount: number,
   from: Currency,
   to: Currency,
-  fxRate: number = 17257,
+  fxRate: number = 17885,
 ): number {
   if (from === to) return amount;
   if (from === "USD" && to === "IDR") return amount * fxRate;
