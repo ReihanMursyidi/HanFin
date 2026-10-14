@@ -30,7 +30,7 @@ import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   UI_CRYPTO_OPTIONS,
-  UI_STOCK_OPTIONS,
+  UI_TRADEABLE_STOCK_OPTIONS,
 } from "@/constants/market-constant";
 import type {
   AssetType,
@@ -53,7 +53,7 @@ export function CreateAssetTransaction({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const presetAssets =
-    assetType === "stocks" ? UI_STOCK_OPTIONS : UI_CRYPTO_OPTIONS;
+    assetType === "stocks" ? UI_TRADEABLE_STOCK_OPTIONS : UI_CRYPTO_OPTIONS;
 
   // Form State
   const [symbol, setSymbol] = useState(presetAssets[0].symbol);
@@ -128,7 +128,7 @@ export function CreateAssetTransaction({
         const msg =
           err instanceof Error ? err.message : "Gagal menyimpan transaksi.";
         setErrorMsg(msg);
-        toast.error(msg);
+        // toast.error(msg);
       }
     });
   };

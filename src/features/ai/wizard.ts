@@ -20,6 +20,8 @@ import {
 } from "./functionTransaction";
 import { createAI } from "./instance";
 
+const AI_MODEL = "gemini-3-flash-preview";
+
 // 1. HANDLE WIZARD INPUT (Direct Text Input)
 export async function handleWizardInput(message: string) {
   const cleanMessage = message.trim();
@@ -52,7 +54,7 @@ export async function handleWizardInput(message: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_MODEL,
       contents,
       config: {
         responseMimeType: "application/json",
@@ -150,7 +152,7 @@ export async function handleWizardTools(formData: FormData) {
     loopCount++;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_MODEL,
       contents,
       config: {
         tools: [

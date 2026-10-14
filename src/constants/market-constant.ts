@@ -41,6 +41,14 @@ export const UI_CRYPTO_OPTIONS = CRYPTO_ASSETS.map((c) => ({
   name: c.name,
 }));
 
+// Mengecualikan IHSG
+export const UI_TRADEABLE_STOCK_OPTIONS = STOCK_ASSETS.filter(
+  (s) => s.shortSymbol !== "IHSG",
+).map((s) => ({
+  symbol: s.shortSymbol,
+  name: s.name,
+}));
+
 // 2. CONSTANTS & ENUMS (TUPLE AS CONST)
 export const ASSET_TYPES = ["stocks", "crypto"] as const;
 export const TRANSACTION_TYPES = ["buy", "sell"] as const;

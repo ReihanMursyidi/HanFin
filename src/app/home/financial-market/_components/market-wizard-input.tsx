@@ -1,15 +1,32 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles } from "lucide-react";
-import type { AssetType } from "@/features/market/types";
-import { Currency } from "@/constants/market-constant";
-import { useState, useTransition } from "react";
-import { MarketWizardTransaction } from "@/features/market/action";
-import { formatCurrency } from "@/lib/format";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import {
+  Loader2Icon,
+  MicIcon,
+  SendIcon,
+  SparklesIcon,
+  SquareIcon,
+} from "lucide-react";
+import type { KeyboardEvent } from "react";
+import { useRef, useState, useEffect } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import Markdown from "react-markdown";
 import { toast } from "sonner";
+import z from "zod";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { handleMarketWizardTools } from "@/features/market/wizard";
+import type { AssetType, Currency } from "@/constants/market-constant";
+
+const formSchema = z.object({
+  message: z.string().trim().min(1, "Pesan wajib diisi"),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface MarketWizardInputProps {
   assetType: AssetType;
@@ -20,65 +37,184 @@ export function MarketWizardInput({
   assetType,
   currency = "IDR",
 }: MarketWizardInputProps) {
-  const [prompt, setPrompt] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [isRecording, setIsRecording] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() || isPending) return;
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
-    startTransition(async () => {
-      try {
-        const res = await MarketWizardTransaction(prompt, assetType, currency);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { message: "" },
+  });
 
-        const typeText = res.transactionType === "buy" ? "BELI" : "JUAL";
-        const unitLabel = assetType === "stocks" ? "lembar" : "unit";
-        const formattedTotal = formatCurrency(res.totalAmount, currency);
+  const message = useWatch({ control: form.control, name: "message" });
+  const isText = Boolean(message && message.trim() !== "");
 
-        toast.success(
-          `Berhasil mencatat transaksi ${typeText} ${res.symbol} sebanyak ${res.quantity.toLocaleString("id-ID")} ${unitLabel} (${formattedTotal}).`,
-        );
-
-        setPrompt("");
-      } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : "Gagal memproses input transaksi.";
-        toast.error(msg);
+  // Bersihkan track mikrofon saat komponen di-unmount
+  useEffect(() => {
+    return () => {
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
       }
-    });
+    };
+  }, []);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: handleMarketWizardTools,
+    onSuccess: (response) => {
+      toast.success(
+        <div className="response-ai w-full max-h-48 overflow-y-auto text-sm leading-relaxed">
+          <Markdown>{response}</Markdown>
+        </div>,
+      );
+      form.reset();
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal memproses permintaan transaksi.",
+      );
+    },
+  });
+
+  const onSubmit = (data: FormValues) => {
+    const formData = new FormData();
+    formData.append("type", "text");
+    formData.append("file", "");
+    formData.append("request", data.message);
+    formData.append("assetType", assetType);
+    formData.append("currency", currency);
+
+    mutate(formData);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.handleSubmit(onSubmit)();
+    }
+  };
+
+  const startRecording = async () => {
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        const formData = new FormData();
+        formData.append("type", "audio");
+        formData.append("request", "");
+        formData.append("file", audioBlob);
+        formData.append("assetType", assetType);
+        formData.append("currency", currency);
+
+        mutate(formData);
+
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((track) => track.stop());
+          audioStreamRef.current = null;
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("[Microphone Access Error]:", err);
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      toast.error("Gagal mengakses mikrofon. Periksa izin akses browser.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleActionClick = () => {
+    if (!isText) {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    }
   };
 
   return (
-    <Card className="w-full shadow-sm border-primary/20">
-      <CardContent className="p-4 space-y-3">
-        <form onSubmit={handleSubmit} className="flex items-center gap-3">
-          <Sparkles className="size-5 text-primary shrink-0 animate-pulse" />
-          <Input
-            placeholder={
-              assetType === "stocks"
-                ? 'Catat transaksi via AI (contoh: "Beli 10 lot BBCA di harga 10200")'
-                : 'Catat transaksi via AI (contoh: "Beli 0.05 BTC di harga 95000")'
-            }
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={isPending}
-            className="bg-background text-xs md:text-sm h-9"
+    <Card className="w-full p-0 transition-all shadow-sm border-primary/20 focus-within:border-primary/50">
+      <CardContent className="px-4 py-2">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex items-center gap-3"
+        >
+          <div className="flex items-center justify-center text-primary">
+            <SparklesIcon className="size-5" />
+          </div>
+
+          <Controller
+            control={form.control}
+            name="message"
+            render={({ field }) => (
+              <Field className="flex-1">
+                <input
+                  {...field}
+                  id="market-form-message"
+                  placeholder={
+                    isRecording
+                      ? "Mendengarkan suara..."
+                      : isPending && !field.value
+                        ? "Memproses transaksi..."
+                        : assetType === "stocks"
+                          ? 'Catat transaksi via AI atau suara (contoh: "Beli 10 lot BBCA")'
+                          : 'Catat transaksi via AI atau suara (contoh: "Beli 0.05 BTC")'
+                  }
+                  autoComplete="off"
+                  className="w-full h-12 text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground"
+                  onKeyDown={handleKeyDown}
+                  disabled={isPending || isRecording}
+                />
+              </Field>
+            )}
           />
+
           <Button
-            type="submit"
-            size="sm"
-            disabled={isPending || !prompt.trim()}
-            className="h-9 px-4 text-xs font-semibold shrink-0"
+            type={isText ? "submit" : "button"}
+            size="icon"
+            variant="ghost"
+            disabled={isPending}
+            onClick={handleActionClick}
+            className="transition-all rounded-full size-9 text-foreground hover:bg-secondary"
+            aria-label={
+              isText
+                ? "Kirim instruksi"
+                : isRecording
+                  ? "Berhenti merekam"
+                  : "Mulai merekam suara"
+            }
           >
             {isPending ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin mr-1.5" />
-                Memproses...
-              </>
+              <Loader2Icon className="size-5 animate-spin text-primary" />
+            ) : isText ? (
+              <SendIcon className="size-5 text-primary" />
+            ) : isRecording ? (
+              <SquareIcon className="text-red-500 size-5 fill-red-500 animate-pulse" />
             ) : (
-              "Kirim"
+              <MicIcon className="size-5 text-muted-foreground hover:text-foreground" />
             )}
           </Button>
         </form>

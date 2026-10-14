@@ -10,8 +10,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getMarketChartData } from "@/features/market/action";
 import type { AssetType, OHLCData } from "@/features/market/types";
+import { getMarketChartData } from "@/features/market/action";
 
 interface TradingViewChartProps {
   data: OHLCData[];

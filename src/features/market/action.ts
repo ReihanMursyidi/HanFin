@@ -25,8 +25,6 @@ import {
   aiAnalysisRequestSchema,
   aiAnalysisResponseSchema,
   createMarketTransactionSchema,
-  CRYPTO_ASSETS,
-  STOCK_ASSETS,
 } from "@/constants/market-constant";
 
 // SYNC / RECALCULATE PORTFOLIO ASSET
@@ -45,7 +43,7 @@ export async function syncPortfolioAsset(
     .order("transaction_date", { ascending: true });
 
   if (error) {
-    throw new Error(`Gagal menyelaraskan portfolio: ${error.message}`);
+    throw new Error(`Gagal mengambil data riwayat transaksi: ${error.message}`);
   }
 
   if (!transactions || transactions.length === 0) {
@@ -70,8 +68,18 @@ export async function syncPortfolioAsset(
     } else if (tx.transaction_type === "sell") {
       if (totalQuantity > 0) {
         const currentAvgPrice = totalCost / totalQuantity;
-        totalQuantity -= qty;
-        totalCost -= qty * currentAvgPrice;
+
+        // 👈 CEGAH KUANTITAS MINUS: Batasi pengurangan maksimal sebesar totalQuantity yang ada
+        const actualSellQty = Math.min(qty, totalQuantity);
+
+        totalQuantity -= actualSellQty;
+        totalCost -= actualSellQty * currentAvgPrice;
+
+        // Reset modal jika sisa aset habis
+        if (totalQuantity <= 0) {
+          totalQuantity = 0;
+          totalCost = 0;
+        }
       }
     }
   }
@@ -87,22 +95,23 @@ export async function syncPortfolioAsset(
 
   const avgBuyPrice = totalCost / totalQuantity;
 
+  // UPSERT DATA
   const { error: upsertError } = await supabase.from("portfolio_assets").upsert(
     {
       user_id: userId,
       symbol: symbol.toUpperCase(),
-      asset_name: transactions[0].asset_name,
+      name: transactions[0].asset_name,
       asset_type: assetType,
       total_quantity: totalQuantity,
       avg_buy_price: avgBuyPrice,
       currency: transactions[0].currency,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "user_id, symbol" },
+    { onConflict: "user_id,symbol" },
   );
 
   if (upsertError) {
-    throw new Error(`Gagal menyimpan portfolio: ${upsertError.message}`);
+    throw new Error(`Gagal menyimpan portofolio: ${upsertError.message}`);
   }
 }
 
@@ -147,9 +156,9 @@ export async function createMarketTransaction(rawInput: unknown) {
 
   if (!user) throw new Error("Unauthorized");
 
-  // Validasi Runtime Zod
   const input = createMarketTransactionSchema.parse(rawInput);
 
+  // VALIDASI TRANSAKSI JUAL
   if (input.transaction_type === "sell") {
     const { data: existingAsset } = await supabase
       .from("portfolio_assets")
@@ -188,14 +197,24 @@ export async function createMarketTransaction(rawInput: unknown) {
     notes: input.notes || null,
   };
 
+  // 1. Simpan ke database
   const { data, error } = await supabase
     .from("market_transactions")
     .insert(payload)
     .select()
     .single();
 
-  if (error)
-    throw new Error(`Failed to create market transaction: ${error.message}`);
+  if (error) {
+    throw new Error(`Gagal mencatat transaksi: ${error.message}`);
+  }
+
+  // 2. Sinkronkan ke portfolio_assets
+  try {
+    await syncPortfolioAsset(user.id, input.symbol, input.asset_type);
+  } catch (syncError) {
+    await supabase.from("market_transactions").delete().eq("id", data.id);
+    throw syncError;
+  }
 
   revalidatePath("/home/financial-market/stocks");
   revalidatePath("/home/financial-market/crypto");
@@ -216,7 +235,7 @@ export async function deleteMarketTransaction(id: string) {
   // Ambil data transaksi sebelum dihapus untuk mengetahui simbol & asset_type
   const { data: tx, error: fetchError } = await supabase
     .from("market_transactions")
-    .select("symbol, asset_type")
+    .select("*")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -225,16 +244,23 @@ export async function deleteMarketTransaction(id: string) {
     throw new Error("Transaksi tidak ditemukan.");
   }
 
-  const { error } = await supabase
+  const { error: deleteError } = await supabase
     .from("market_transactions")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
+  if (deleteError) {
+    throw new Error(`Failed to delete transaction: ${deleteError.message}`);
+  }
 
   // Hitung ulang portofolio untuk simbol yang bersangkutan
-  await syncPortfolioAsset(user.id, tx.symbol, tx.asset_type as AssetType);
+  try {
+    await syncPortfolioAsset(user.id, tx.symbol, tx.asset_type as AssetType);
+  } catch (syncError) {
+    await supabase.from("market_transactions").insert(tx);
+    throw syncError;
+  }
 
   revalidatePath("/home/financial-market/stocks");
   revalidatePath("/home/financial-market/crypto");
@@ -506,157 +532,5 @@ export async function analyzeMarketWithAI(
       volumeAnalysis: "Analisis volume tidak tersedia.",
       keyLevels: { support: [], resistance: [] },
     };
-  }
-}
-
-export async function MarketWizardTransaction(
-  promptText: string,
-  assetType: AssetType,
-  userCurrency: Currency = "IDR",
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Unauthorized");
-
-  if (!promptText || promptText.trim().length === 0) {
-    throw new Error("Perintah transaksi tidak boleh kosong.");
-  }
-
-  const assetOptions = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
-  const assetListText = assetOptions
-    .map((a) => `${a.shortSymbol} (${a.name})`)
-    .join(", ");
-
-  const prompt = `
-    <role>
-      Financial Market Transaction Parser Agent.
-    </role>
-    <instruction>
-      Extract structured financial market transaction data (${assetType.toUpperCase()}) from the user's natural language input.
-      Return ONLY a valid JSON object without any additional text or markdown formatting.
-    </instruction>
-    <context>
-      - Target Asset Class: ${assetType.toUpperCase()}
-      - Valid Assets: [${assetListText}]
-      - Default Currency: ${userCurrency}
-    </context>
-    <input>
-      ${promptText}
-    </input>
-    <rules>
-      1. "transaction_type": Must be "buy" (keywords: buy, beli, dca, entry, serok, etc.) or "sell" (keywords: sell, jual, tp, take profit, cut loss, etc.).
-      2. "symbol": Match the short symbol from the valid asset list (e.g., "BBCA", "BTC").
-      3. "quantity":
-        - For "stocks" (Indonesian Stocks): Users often specify "lot". 1 LOT = 100 SHARES. 
-          Always convert "quantity" to total pure SHARES (e.g., 10 lots -> 1000, 1 lot -> 100).
-        - For "crypto": Use exact unit quantity (e.g., 0.5, 1.2, 0.05).
-      4. "price_per_unit": Numerical price per single share/unit.
-        If the user does NOT specify a price in the text, return a null value.
-      5. Success Output Schema:
-        {
-          "success": true,
-          "symbol": "STRING",
-          "transaction_type": "buy" | "sell",
-          "quantity": NUMBER,
-          "price_per_unit": NUMBER | null,
-          "notes": "STRING"
-        }
-      6. Failure Output Schema (if input is ambiguous, missing price/quantity, or asset is unrecognized):
-        {
-          "success": false,
-          "errorMessage": "STRING (brief explanation in Indonesian)"
-        }
-    </rules>
-  `;
-
-  try {
-    const ai = createAI();
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const parsed = JSON.parse(response.text || "{}");
-
-    if (!parsed.success) {
-      throw new Error(
-        parsed.errorMessage ||
-          "Format instruksi transaksi tidak dapat dipahami.",
-      );
-    }
-
-    const matchedAsset = assetOptions.find(
-      (a) => a.shortSymbol.toUpperCase() === parsed.symbol?.toUpperCase(),
-    );
-
-    const symbol = matchedAsset?.shortSymbol || parsed.symbol.toUpperCase();
-    const assetName = matchedAsset?.name || symbol;
-    const quantity = Number(parsed.quantity);
-
-    let pricePerUnit = Number(parsed.price_per_unit) || 0;
-
-    if (pricePerUnit <= 0) {
-      const fxRate = await getExchangeRateUSDIDR();
-      const marketData =
-        assetType === "crypto"
-          ? await getCryptoMarketData()
-          : await getStockMarketData();
-
-      const matchedMarketItem = marketData.find(
-        (m) => m.symbol.toUpperCase() === symbol.toUpperCase(),
-      );
-
-      if (!matchedMarketItem || !matchedMarketItem.price) {
-        throw new Error(
-          `Harga real-time untuk ${symbol} tidak ditemukan. Harap masukkan harga secara manual.`,
-        );
-      }
-
-      const baseMarketCurrency: Currency =
-        assetType === "crypto" ? "USD" : "IDR";
-      pricePerUnit = convertCurrency(
-        matchedMarketItem.price,
-        baseMarketCurrency,
-        userCurrency,
-        fxRate,
-      );
-    }
-
-    const totalAmount = quantity * pricePerUnit;
-
-    // Eksekusi pencatatan transaksi & sync portfolio
-    const createdTx = await createMarketTransaction({
-      symbol,
-      asset_name: assetName,
-      asset_type: assetType,
-      transaction_type: parsed.transaction_type,
-      quantity,
-      price_per_unit: pricePerUnit,
-      total_amount: totalAmount,
-      currency: userCurrency,
-      notes: parsed.notes || `Input via AI Wizard: "${promptText}"`,
-    });
-
-    return {
-      success: true,
-      symbol,
-      transactionType: parsed.transaction_type as "buy" | "sell",
-      quantity,
-      pricePerUnit,
-      totalAmount,
-      createdTx,
-    };
-  } catch (err) {
-    throw new Error(
-      err instanceof Error
-        ? err.message
-        : "Gagal memproses instruksi transaksi via AI.",
-    );
   }
 }
