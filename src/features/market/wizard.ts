@@ -22,7 +22,7 @@ import {
 } from "./market-data";
 import { createClient } from "@/lib/supabase/server";
 
-const AI_MODEL = "gemini-3.6-flash";
+const AI_MODEL = "gemini-3-flash-preview";
 
 // ==========================================
 // FUNCTION DECLARATIONS UNTUK AI TOOL CALLING
@@ -281,6 +281,12 @@ export async function handleMarketWizardTools(formData: FormData) {
             <role>
               You are an AI Wizard Financial Assistant managing ${assetType.toUpperCase()} market transactions via ${type}.
             </role>
+            <strict_rules>
+              1. DO NOT CALL ANY FUNCTION/TOOL if the input is noise, random words/garbage, general conversation irrelevant to market transactions, or does not contain a clear transaction intention (buy/sell). 
+              2. DO NOT guess, fabricate, or assume asset symbols, quantities, or prices if the user has not explicitly stated them. 
+              3. ONLY call 'create_market_transaction' if the user explicitly mentions a financial action (buy/sell) AND an asset name/symbol found in the list of valid assets: [${assetListText}]. 
+              4. If the input is irrelevant, unclear, or not a transaction instruction, DO NOT CALL ANY FUNCTION. Simply return a text response in Indonesian explaining that the instruction cannot be understood as a market transaction. 
+            </strict_rules>
             <instruction>
               - Extract transaction intent from ${type === "text" ? "the provided text" : "the audio file"} in Bahasa Indonesia.
               - Target Category: ${assetType.toUpperCase()}
