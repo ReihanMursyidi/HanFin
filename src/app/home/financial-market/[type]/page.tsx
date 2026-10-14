@@ -73,10 +73,8 @@ export default async function FinancialMarketTypePage({ params }: PageProps) {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Pantau pergerakan pasar{" "}
-          {assetType === "stocks"
-            ? "Saham Indonesia (IHSG)"
-            : "Kripto (Crypto)"}{" "}
-          real-time, analisis dengan AI, dan kelola portofolio.
+          {assetType === "stocks" ? "Saham Indonesia" : "Kripto"} real-time,
+          analisis dengan AI, dan kelola portofolio.
         </p>
       </div>
 

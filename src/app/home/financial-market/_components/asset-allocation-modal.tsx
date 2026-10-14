@@ -17,13 +17,13 @@ interface AssetAllocationModalProps {
   currency: string;
 }
 
-const COLORS = [
-  "#10b981",
-  "#3b82f6",
-  "#f59e0b",
-  "#ec4899",
-  "#8b5cf6",
-  "#64748b",
+const PASTEL_COLORS = [
+  "#10B981", // Emerald
+  "#3B82F6", // Blue
+  "#F59E0B", // Amber
+  "#EC4899", // Pink
+  "#8B5CF6", // Purple
+  "#06B6D4", // Cyan
 ];
 
 export function AssetAllocationModal({
@@ -44,57 +44,90 @@ export function AssetAllocationModal({
     0,
   );
 
+  const renderCustomLabel = ({
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    innerRadius = 0,
+    outerRadius = 0,
+    percent = 0,
+    index = 0,
+  }) => {
+    if (percent < 0.01) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="text-[11px] font-semibold select-none drop-shadow-xs"
+      >
+        <tspan x={x} dy="-0.6em">
+          {chartData[index]?.name}
+        </tspan>
+        <tspan x={x} dy="1.2em" className="font-bold">
+          {`${(percent * 100).toFixed(0)}%`}
+        </tspan>
+      </text>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md border-border/40 shadow-lg">
         <DialogHeader>
-          <DialogTitle>Alokasi Portofolio Aset</DialogTitle>
+          <DialogTitle className="text-base font-bold tracking-tight">
+            Alokasi Aset Portofolio
+          </DialogTitle>
         </DialogHeader>
 
         {chartData.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Belum ada aset yang dimiliki dalam portofolio.
-          </div>
+          <p className="text-center py-8 text-xs text-muted-foreground">
+            Belum ada aset dalam portofolio.
+          </p>
         ) : (
-          <div className="space-y-4">
-            <div className="h-64 w-full">
+          <div className="space-y-4 pt-1">
+            <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={chartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={4}
+                    innerRadius={0}
+                    outerRadius={95}
+                    paddingAngle={1.5}
                     dataKey="value"
+                    labelLine={false}
+                    label={renderCustomLabel}
                   >
                     {chartData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+                        fill={PASTEL_COLORS[index % PASTEL_COLORS.length]}
+                        stroke="transparent"
                       />
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value) => {
-                      const numericValue = Array.isArray(value)
-                        ? Number(value[0] ?? 0)
-                        : Number(value ?? 0);
-
-                      return [
-                        currency === "IDR"
-                          ? convertToIDR(numericValue)
-                          : `$${numericValue.toLocaleString()}`,
-                        "Nilai",
-                      ] as [string, string];
-                    }}
+                    formatter={(val) => [
+                      currency === "IDR"
+                        ? convertToIDR(Number(val))
+                        : `$${Number(val).toLocaleString()}`,
+                      "Nilai",
+                    ]}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
               {chartData.map((item, index) => {
                 const percentage =
                   totalPortfolioValue > 0
@@ -104,27 +137,30 @@ export function AssetAllocationModal({
                 return (
                   <div
                     key={item.name}
-                    className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/20"
+                    className="flex items-center justify-between p-2.5 rounded-md border border-border/40 bg-muted/10 text-xs"
                   >
                     <div className="flex items-center gap-2">
-                      <div
-                        className="size-3 rounded-full"
+                      <span
+                        className="size-2.5 rounded-full shrink-0"
                         style={{
-                          backgroundColor: COLORS[index % COLORS.length],
+                          backgroundColor:
+                            PASTEL_COLORS[index % PASTEL_COLORS.length],
                         }}
                       />
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="font-semibold">{item.name}</span>
+                      <span className="text-[10px] text-muted-foreground">
                         ({item.quantity} unit)
                       </span>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{percentage}%</p>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="text-right flex items-center gap-3">
+                      <span className="font-medium text-muted-foreground">
                         {currency === "IDR"
                           ? convertToIDR(item.value)
                           : `$${item.value.toLocaleString()}`}
-                      </p>
+                      </span>
+                      <span className="font-bold text-foreground w-12 text-right">
+                        {percentage}%
+                      </span>
                     </div>
                   </div>
                 );
