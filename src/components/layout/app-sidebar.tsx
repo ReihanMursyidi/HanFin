@@ -135,20 +135,29 @@ export function AppSidebar() {
 
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {item.subItems.map((sub) => (
-                            <SidebarMenuSubItem key={sub.label}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={pathname === sub.href}
-                                className="py-4 text-sm"
-                              >
-                                <Link href={sub.href} onClick={() => setOpenMobile(false)}>
-                                  {sub.icon}
-                                  <span>{sub.label}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          {item.subItems.map((sub) => {
+                            const isSubItemActive =
+                              pathname === sub.href ||
+                              pathname.startsWith(`${sub.href}/`);
+
+                            return (
+                              <SidebarMenuSubItem key={sub.label}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={isSubItemActive}
+                                  className="py-4 text-sm"
+                                >
+                                  <Link
+                                    href={sub.href}
+                                    onClick={() => setOpenMobile(false)}
+                                  >
+                                    {sub.icon}
+                                    <span>{sub.label}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </SidebarMenuItem>
@@ -169,7 +178,10 @@ export function AppSidebar() {
                         "bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground",
                     )}
                   >
-                    <Link href={item.href || "#"} onClick={() => setOpenMobile(false)}>
+                    <Link
+                      href={item.href || "#"}
+                      onClick={() => setOpenMobile(false)}
+                    >
                       {item.icon}
                       <span>{item.label}</span>
                     </Link>

@@ -36,13 +36,13 @@ export function PortfolioCard({
   return (
     <>
       <Card className="w-full shadow-sm border-primary/20 bg-linear-to-br from-background to-muted/20">
-        <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
+        <CardContent className="flex flex-col justify-between h-full gap-4 p-5">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
                 Total Aset {assetType === "stocks" ? "Saham" : "Kripto"}
               </p>
-              <h2 className="text-2xl font-bold tracking-tight mt-1">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight">
                 {currency === "IDR"
                   ? convertToIDR(totalValue)
                   : `$${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
@@ -51,7 +51,7 @@ export function PortfolioCard({
             <Button
               variant="outline"
               size="icon"
-              className="size-9 rounded-full border-primary/20 hover:bg-primary/10"
+              className="rounded-full size-9 border-primary/20 hover:bg-primary/10"
               onClick={() => setIsModalOpen(true)}
               title="Lihat Alokasi Aset"
             >
@@ -59,7 +59,7 @@ export function PortfolioCard({
             </Button>
           </div>
 
-          <div className="flex items-center justify-between text-xs pt-2 border-t">
+          <div className="flex items-center justify-between pt-2 text-xs border-t">
             <span className="text-muted-foreground">Floating PnL</span>
             <div
               className={`flex items-center gap-1 font-semibold ${

@@ -80,12 +80,14 @@ export function AiPredictorCard({
 
   const [prevAssetType, setPrevAssetType] = useState(assetType);
   const [symbol, setSymbol] = useState(assetList[0].symbol);
-  const selectedAsset = assetList.find((a) => a.symbol === symbol);
 
   if (assetType !== prevAssetType) {
     setPrevAssetType(assetType);
     setSymbol(assetList[0].symbol);
   }
+
+  const selectedAsset =
+    assetList.find((a) => a.symbol === symbol) || assetList[0];
 
   const [strategy, setStrategy] = useState<TradingStrategy>("swing_trading");
   const [trend, setTrend] = useState<TrendIndicator>("SMA");
@@ -133,15 +135,21 @@ export function AiPredictorCard({
   };
 
   return (
-    <Card className={cn("w-full shadow-sm border-primary/20", className)}>
-      <CardHeader className="pb-3 border-b shrink-0">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <Sparkles className="size-4 text-primary" />
-          AI Market Predictor Agent
+    <Card
+      className={cn(
+        "w-full max-w-full sm:max-w-md md:max-w-2xl lg:max-w-2xl shadow-sm border-primary/20",
+        className,
+      )}
+    >
+      <CardHeader className="px-4 pt-4 pb-3 border-b shrink-0">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold sm:text-base">
+          <Sparkles className="size-4 text-primary shrink-0" />
+          <span>AI Market Predictor Agent</span>
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="pt-4 space-y-4">
+      <CardContent className="p-4 space-y-4">
+        {/* Pilih Aset */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
             <Search className="size-3 text-primary" /> Pilih Aset Diprediksi
@@ -152,36 +160,39 @@ export function AiPredictorCard({
                 variant="outline"
                 role="combobox"
                 aria-expanded={openSearch}
-                className="w-full justify-between h-9 text-xs font-semibold"
+                className="justify-between w-full px-3 text-xs font-semibold h-9"
               >
-                {selectedAsset
-                  ? `${selectedAsset.symbol} (${selectedAsset.name})`
-                  : "Cari Aset..."}
-                <ChevronsUpDown className="ml-2 size-3 shrink-0 opacity-50" />
+                <span className="truncate">
+                  {selectedAsset
+                    ? `${selectedAsset.symbol} (${selectedAsset.name})`
+                    : "Cari Aset..."}
+                </span>
+                <ChevronsUpDown className="ml-2 opacity-50 size-3 shrink-0" />
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-[320px] p-2 overflow-hidden"
+              className="w-(--radix-popover-trigger-width) min-w-70 p-2 overflow-hidden"
               align="start"
             >
-              <div className="flex items-center border-b px-2 pb-2 mb-2">
+              <div className="flex items-center px-2 pb-2 mb-2 border-b">
                 <Search className="mr-2 size-3.5 shrink-0 opacity-50" />
                 <Input
                   placeholder="Ketik nama atau simbol aset..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 text-xs border-0 focus-visible:ring-0 shadow-none"
+                  className="h-8 text-xs border-0 shadow-none focus-visible:ring-0"
                 />
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-1">
+              <div className="space-y-1 overflow-y-auto max-h-48">
                 {filteredAssets.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">
+                  <p className="py-3 text-xs text-center text-muted-foreground">
                     Aset tidak ditemukan.
                   </p>
                 ) : (
                   filteredAssets.map((asset) => (
                     <button
                       key={asset.symbol}
+                      type="button"
                       onClick={() => {
                         setSymbol(asset.symbol);
                         setOpenSearch(false);
@@ -193,14 +204,14 @@ export function AiPredictorCard({
                           "bg-primary/10 font-semibold text-primary",
                       )}
                     >
-                      <div>
+                      <div className="pr-2 truncate">
                         <span>{asset.symbol}</span>
-                        <span className="text-[10px] text-muted-foreground ml-2">
+                        <span className="text-[10px] text-muted-foreground ml-1.5 truncate">
                           {asset.name}
                         </span>
                       </div>
                       {symbol === asset.symbol && (
-                        <Check className="size-3 text-primary" />
+                        <Check className="size-3 text-primary shrink-0" />
                       )}
                     </button>
                   ))
@@ -210,6 +221,7 @@ export function AiPredictorCard({
           </Popover>
         </div>
 
+        {/* Metode Trading */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
             <Target className="size-3 text-primary" /> Metode Trading
@@ -218,7 +230,7 @@ export function AiPredictorCard({
             value={strategy}
             onValueChange={(v) => setStrategy(v as TradingStrategy)}
           >
-            <SelectTrigger className="h-9 text-xs font-semibold">
+            <SelectTrigger className="text-xs font-semibold h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -238,16 +250,17 @@ export function AiPredictorCard({
           </Select>
         </div>
 
+        {/* Indikator Teknikal Grid */}
         <div className="grid grid-cols-3 gap-2 pt-1 border-t">
           <div>
-            <label className="text-[10px] font-medium text-muted-foreground uppercase">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase block truncate">
               Trend
             </label>
             <Select
               value={trend}
               onValueChange={(v) => setTrend(v as TrendIndicator)}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 px-2 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -259,14 +272,14 @@ export function AiPredictorCard({
           </div>
 
           <div>
-            <label className="text-[10px] font-medium text-muted-foreground uppercase">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase block truncate">
               Momentum
             </label>
             <Select
               value={momentum}
               onValueChange={(v) => setMomentum(v as MomentumIndicator)}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 px-2 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -278,27 +291,28 @@ export function AiPredictorCard({
           </div>
 
           <div>
-            <label className="text-[10px] font-medium text-muted-foreground uppercase">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase block truncate">
               Volume
             </label>
             <Select
               value={volume}
               onValueChange={(v) => setVolume(v as VolumeIndicator)}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 px-2 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="OBV">OBV</SelectItem>
                 <SelectItem value="VWAP">VWAP</SelectItem>
-                <SelectItem value="VOLUME_PROFILE">Volume Profile</SelectItem>
+                <SelectItem value="VOLUME_PROFILE">Vol Profile</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
+        {/* Action Button */}
         <Button
-          className="w-full h-9 text-xs font-medium"
+          className="w-full text-xs font-medium h-9"
           onClick={handleGenerate}
           disabled={isLoading}
         >
@@ -315,76 +329,84 @@ export function AiPredictorCard({
           )}
         </Button>
 
+        {/* Hasil Analisis AI */}
         {analysis && (
-          <div className="space-y-3 pt-2 border-t text-xs">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-primary/10">
-              <div className="flex items-center gap-1.5 font-semibold">
-                <TrendingUp className="size-4 text-primary" />
+          <div className="pt-2 space-y-3 text-xs border-t">
+            {/* Rekomendasi & Risiko */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-primary/10">
+              <div className="flex items-center gap-1.5 font-semibold text-xs">
+                <TrendingUp className="size-4 text-primary shrink-0" />
                 <span>Rekomendasi: {analysis.recommendation}</span>
               </div>
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <ShieldAlert className="size-3.5" />
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <ShieldAlert className="size-3.5 shrink-0" />
                 <span>Risiko: {analysis.riskLevel}</span>
               </div>
             </div>
 
+            {/* Target Prices Grid */}
             {analysis.targetPrices && (
-              <div className="grid grid-cols-3 gap-2 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-center">
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                    <ArrowDownCircle className="size-3 text-emerald-500" />{" "}
-                    Harga Beli
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-center">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
+                    <ArrowDownCircle className="size-3 text-emerald-500 shrink-0" />
+                    <span>Beli</span>
                   </span>
-                  <p className="font-bold text-foreground">
+                  <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
                     {formatCurrency(analysis.targetPrices.entryPrice, currency)}
                   </p>
                 </div>
 
-                <div className="space-y-0.5 border-x border-border/50 px-1">
-                  <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                    <ArrowUpCircle className="size-3 text-primary" /> Target
-                    Jual
+                <div className="space-y-0.5 border-x border-border/50 px-1 min-w-0">
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
+                    <ArrowUpCircle className="size-3 text-primary shrink-0" />
+                    <span>Target</span>
                   </span>
-                  <p className="font-bold text-foreground">
+                  <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
                     {formatCurrency(analysis.targetPrices.takeProfit, currency)}
                   </p>
                 </div>
 
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                    <ShieldX className="size-3 text-rose-500" /> Stop Loss
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
+                    <ShieldX className="size-3 text-rose-500 shrink-0" />
+                    <span>Stop Loss</span>
                   </span>
-                  <p className="font-bold text-rose-500">
+                  <p className="font-bold text-[11px] sm:text-xs text-rose-500 truncate">
                     {formatCurrency(analysis.targetPrices.stopLoss, currency)}
                   </p>
                 </div>
               </div>
             )}
 
-            <p className="text-muted-foreground leading-relaxed">
+            {/* Summary */}
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {analysis.summary}
             </p>
 
-            <div className="space-y-1 bg-muted/20 p-2.5 rounded-lg">
-              <p className="font-semibold text-foreground">
+            {/* Detail Analisis */}
+            <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-lg">
+              <p className="text-xs font-semibold text-foreground">
                 Detail Analisis: {analyzedParams?.symbol} (
                 {analyzedParams ? STRATEGY_LABELS[analyzedParams.strategy] : ""}
                 )
               </p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px] leading-relaxed">
                 <li>{analysis.trendAnalysis}</li>
                 <li>{analysis.momentumAnalysis}</li>
                 <li>{analysis.volumeAnalysis}</li>
               </ul>
             </div>
 
+            {/* Key Levels */}
             {analysis.keyLevels && (
               <div className="pt-2 border-t space-y-1.5">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                  <Layers className="size-3 text-primary" /> Key Levels Terdekat
+                  <Layers className="size-3 text-primary shrink-0" /> Key Levels
+                  Terdekat
                 </span>
-                <div className="flex items-center justify-between text-[11px] bg-muted/30 p-2 rounded-md">
-                  <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] bg-muted/30 p-2.5 rounded-md">
+                  <div className="truncate">
                     <span className="text-muted-foreground">Support: </span>
                     <span className="font-semibold text-emerald-500">
                       {analysis.keyLevels.support
@@ -392,7 +414,7 @@ export function AiPredictorCard({
                         .join(" | ")}
                     </span>
                   </div>
-                  <div>
+                  <div className="truncate">
                     <span className="text-muted-foreground">Resistance: </span>
                     <span className="font-semibold text-rose-500">
                       {analysis.keyLevels.resistance
