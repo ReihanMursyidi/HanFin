@@ -197,7 +197,7 @@ export default function GenerativeContent() {
     <Card className="relative w-full overflow-hidden shadow-sm border-primary/20">
       <CardHeader className="pb-4 border-b bg-slate-50/50 dark:bg-muted/10">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <CardTitle className="flex items-center gap-2 text-xl">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <SparklesIcon className="size-5 text-primary" />
             Generative AI Insight{" "}
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary">

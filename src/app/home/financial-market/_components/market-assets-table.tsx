@@ -12,10 +12,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { convertToIDR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Currency, MarketAsset } from "@/features/market/types";
 
+interface ExtendedMarketAsset extends MarketAsset {
+  volume24h?: number;
+  high24h?: number;
+  low24h?: number;
+}
+
 interface MarketAssetsTableProps {
-  assets: MarketAsset[];
+  assets: ExtendedMarketAsset[];
   currency: Currency;
 }
 
@@ -77,65 +84,70 @@ export function MarketAssetsTable({
   currency,
 }: MarketAssetsTableProps) {
   return (
-    <Card className="w-full shadow-sm border-primary/10">
+    <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
       <CardHeader className="pb-3 border-b">
         <CardTitle className="text-base font-semibold">
           Daftar Aset Utama
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader className="bg-muted/30">
-            <TableRow>
-              <TableHead className="w-12 pl-6" />
-              <TableHead className="text-left">Aset</TableHead>
-              <TableHead className="text-center">Harga</TableHead>
-              <TableHead className="text-center">24h Change</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {assets.map((asset) => (
-              <TableRow key={asset.symbol}>
-                <TableCell className="pl-6 pr-0 w-12">
-                  <AssetLogo
-                    symbol={asset.symbol}
-                    name={asset.name}
-                    assetType={asset.asset_type}
-                  />
-                </TableCell>
-
-                <TableCell className="text-left font-medium">
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-foreground leading-snug">
-                      {asset.symbol}
-                    </span>
-                    <span className="text-xs text-muted-foreground leading-snug">
-                      {asset.name}
-                    </span>
-                  </div>
-                </TableCell>
-
-                <TableCell className="text-center font-semibold">
-                  {currency === "IDR"
-                    ? convertToIDR(asset.price)
-                    : `$${asset.price.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 4,
-                      })}`}
-                </TableCell>
-
-                <TableCell
-                  className={`text-center font-semibold ${
-                    asset.change24h >= 0 ? "text-emerald-500" : "text-rose-500"
-                  }`}
-                >
-                  {asset.change24h >= 0 ? "+" : ""}
-                  {asset.change24h.toFixed(2)}%
-                </TableCell>
+      <CardContent className="p-0 min-w-0">
+        {/* Mekanis pembungkus tabel */}
+        <div className="w-full overflow-x-auto min-w-0 custom-scrollbar">
+          <Table>
+            <TableHeader className="bg-muted/30">
+              <TableRow>
+                <TableHead className="w-12 pl-4 sm:pl-6" />
+                <TableHead className="text-left">Aset</TableHead>
+                <TableHead className="text-right">Harga</TableHead>
+                <TableHead className="text-right pr-4 sm:pr-6">
+                  24h Change
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {assets.map((asset) => (
+                <TableRow key={asset.symbol}>
+                  <TableCell className="pl-4 sm:pl-6 pr-0 w-12">
+                    <AssetLogo
+                      symbol={asset.symbol}
+                      name={asset.name}
+                      assetType={asset.asset_type}
+                    />
+                  </TableCell>
+                  <TableCell className="text-left font-medium">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-foreground leading-snug truncate">
+                        {asset.symbol}
+                      </span>
+                      <span className="text-xs text-muted-foreground leading-snug truncate">
+                        {asset.name}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold whitespace-nowrap">
+                    {currency === "IDR"
+                      ? convertToIDR(asset.price)
+                      : `$${asset.price.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}`}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "text-right font-semibold whitespace-nowrap pr-4 sm:pr-6",
+                      asset.change24h >= 0
+                        ? "text-emerald-500"
+                        : "text-rose-500",
+                    )}
+                  >
+                    {asset.change24h >= 0 ? "+" : ""}
+                    {asset.change24h.toFixed(2)}%
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );

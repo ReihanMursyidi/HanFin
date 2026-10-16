@@ -138,7 +138,8 @@ export function TradingViewChart({
 
     chartRef.current = chart;
 
-    const observer = new MutationObserver(() => {
+    // MutationObserver untuk mendeteksi perubahan mode dark/light theme
+    const themeObserver = new MutationObserver(() => {
       if (!chartRef.current) return;
       const updatedColors = getThemeColors();
       chartRef.current.applyOptions({
@@ -152,39 +153,41 @@ export function TradingViewChart({
       });
     });
 
-    observer.observe(document.documentElement, {
+    themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
     });
 
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
+    // ResizeObserver untuk mendeteksi perubahan lebar container (termasuk toggle sidebar)
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (!chartRef.current || entries.length === 0) return;
+      const { width } = entries[0].contentRect;
+      if (width > 0) {
+        chartRef.current.applyOptions({ width });
+        chartRef.current.timeScale().fitContent();
       }
-    };
+    });
 
-    window.addEventListener("resize", handleResize);
+    resizeObserver.observe(chartContainerRef.current);
 
     return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", handleResize);
+      themeObserver.disconnect();
+      resizeObserver.disconnect();
       chart.remove();
     };
   }, [chartData]);
 
   return (
-    <Card className="w-full shadow-sm border-primary/10">
+    <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <span>Chart {symbol}</span>
-          <span className="text-xs text-muted-foreground font-normal">
+        <CardTitle className="text-base font-semibold flex items-center gap-2 min-w-0">
+          <span className="truncate">Chart {symbol}</span>
+          <span className="text-xs text-muted-foreground font-normal shrink-0">
             ({currencySymbol})
           </span>
         </CardTitle>
 
-        <div className="flex gap-1 bg-muted/40 p-1 rounded-lg">
+        <div className="flex gap-1 bg-muted/40 p-1 rounded-lg shrink-0">
           {(["1D", "1W", "1M"] as const).map((tf) => (
             <Button
               key={tf}
@@ -200,9 +203,9 @@ export function TradingViewChart({
         </div>
       </CardHeader>
 
-      <CardContent className="pt-4 px-2 relative">
+      <CardContent className="pt-4 px-2 relative min-w-0">
         {isLoading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/40 backdrop-blur-[1px] transition-all">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/40 backdrop-blur-[1px]">
             <Loader2 className="size-6 animate-spin text-primary" />
           </div>
         )}
@@ -212,7 +215,12 @@ export function TradingViewChart({
             Data chart tidak tersedia atau gagal dimuat.
           </div>
         )}
-        <div ref={chartContainerRef} className="w-full h-95" />
+
+        {/* Mekanis pengunci lebar canvas */}
+        <div
+          ref={chartContainerRef}
+          className="w-full h-95 min-w-0 overflow-hidden"
+        />
       </CardContent>
     </Card>
   );
