@@ -29,30 +29,48 @@ export function TradingViewChart({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
-  // State Management tanpa Effect Sync
   const [timeframe, setTimeframe] = useState<"1D" | "1W" | "1M">("1D");
   const [fetchedData, setFetchedData] = useState<OHLCData[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [prevSymbol, setPrevSymbol] = useState(symbol);
 
-  // Adjusting state during render ketika prop symbol berubah
   if (symbol !== prevSymbol) {
     setPrevSymbol(symbol);
     setTimeframe("1D");
     setFetchedData(null);
   }
 
-  // Menentukan data yang dirender (Gunakan prop data jika 1D, atau fetchedData jika 1W/1M)
-  const chartData = timeframe === "1D" ? data : (fetchedData ?? data);
+  // Ambil data baru saat prop symbol berubah dari tabel
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNewSymbolData = async () => {
+      setIsLoading(true);
+      try {
+        const newData = await getMarketChartData(symbol, assetType, "1D");
+        if (isMounted) {
+          setFetchedData(newData && newData.length > 0 ? newData : null);
+        }
+      } catch (error) {
+        console.error("Gagal memuat chart symbol baru:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadNewSymbolData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [symbol, assetType]);
+
+  const chartData = fetchedData ?? data;
 
   const handleTimeframeChange = async (tf: "1D" | "1W" | "1M") => {
     if (tf === timeframe || isLoading) return;
-
-    if (tf === "1D") {
-      setTimeframe("1D");
-      setFetchedData(null);
-      return;
-    }
 
     setTimeframe(tf);
     setIsLoading(true);
@@ -106,13 +124,8 @@ export function TradingViewChart({
       },
       width: chartContainerRef.current.clientWidth,
       height: 380,
-      rightPriceScale: {
-        borderVisible: false,
-      },
-      timeScale: {
-        borderVisible: false,
-        timeVisible: true,
-      },
+      rightPriceScale: { borderVisible: false },
+      timeScale: { borderVisible: false, timeVisible: true },
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -138,14 +151,11 @@ export function TradingViewChart({
 
     chartRef.current = chart;
 
-    // MutationObserver untuk mendeteksi perubahan mode dark/light theme
     const themeObserver = new MutationObserver(() => {
       if (!chartRef.current) return;
       const updatedColors = getThemeColors();
       chartRef.current.applyOptions({
-        layout: {
-          textColor: updatedColors.textColor,
-        },
+        layout: { textColor: updatedColors.textColor },
         grid: {
           vertLines: { color: updatedColors.gridColor },
           horzLines: { color: updatedColors.gridColor },
@@ -158,7 +168,6 @@ export function TradingViewChart({
       attributeFilter: ["class"],
     });
 
-    // ResizeObserver untuk mendeteksi perubahan lebar container (termasuk toggle sidebar)
     const resizeObserver = new ResizeObserver((entries) => {
       if (!chartRef.current || entries.length === 0) return;
       const { width } = entries[0].contentRect;

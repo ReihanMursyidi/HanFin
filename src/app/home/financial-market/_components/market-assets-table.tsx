@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { LineChart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -15,15 +17,25 @@ import { convertToIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Currency, MarketAsset } from "@/features/market/types";
 
-interface ExtendedMarketAsset extends MarketAsset {
-  volume24h?: number;
-  high24h?: number;
-  low24h?: number;
+interface MarketAssetsTableProps {
+  assets: MarketAsset[];
+  currency: Currency;
+  activeSymbol?: string;
+  onSelectSymbol?: (symbol: string) => void;
 }
 
-interface MarketAssetsTableProps {
-  assets: ExtendedMarketAsset[];
-  currency: Currency;
+function formatVolume(val: number, currency: Currency): string {
+  if (currency === "IDR") {
+    if (val >= 1e12) return `Rp ${(val / 1e12).toFixed(2)} T`;
+    if (val >= 1e9) return `Rp ${(val / 1e9).toFixed(2)} M`;
+    if (val >= 1e6) return `Rp ${(val / 1e6).toFixed(2)} Jt`;
+    return convertToIDR(val);
+  }
+
+  if (val >= 1e12) return `$${(val / 1e12).toFixed(2)} T`;
+  if (val >= 1e9) return `$${(val / 1e9).toFixed(2)} B`;
+  if (val >= 1e6) return `$${(val / 1e6).toFixed(2)} M`;
+  return `$${val.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
 function getAssetLogoUrl(symbol: string, assetType: string): string {
@@ -82,6 +94,8 @@ function AssetLogo({
 export function MarketAssetsTable({
   assets,
   currency,
+  activeSymbol,
+  onSelectSymbol,
 }: MarketAssetsTableProps) {
   return (
     <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
@@ -91,60 +105,89 @@ export function MarketAssetsTable({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0 min-w-0">
-        {/* Mekanis pembungkus tabel */}
         <div className="w-full overflow-x-auto min-w-0 custom-scrollbar">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="w-12 pl-4 sm:pl-6" />
+                <TableHead className="sm:pl-6" />
                 <TableHead className="text-left">Aset</TableHead>
-                <TableHead className="text-right">Harga</TableHead>
-                <TableHead className="text-right pr-4 sm:pr-6">
-                  24h Change
+                <TableHead className="text-center lg:text-right">
+                  Harga
                 </TableHead>
+                <TableHead className="text-right sm:pr-6">24h Change</TableHead>
+                <TableHead className="text-right">Volume (24h)</TableHead>
+                <TableHead className="text-center pr-4 sm:pr-6">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {assets.map((asset) => (
-                <TableRow key={asset.symbol}>
-                  <TableCell className="pl-4 sm:pl-6 pr-0 w-12">
-                    <AssetLogo
-                      symbol={asset.symbol}
-                      name={asset.name}
-                      assetType={asset.asset_type}
-                    />
-                  </TableCell>
-                  <TableCell className="text-left font-medium">
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-foreground leading-snug truncate">
-                        {asset.symbol}
-                      </span>
-                      <span className="text-xs text-muted-foreground leading-snug truncate">
-                        {asset.name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold whitespace-nowrap">
-                    {currency === "IDR"
-                      ? convertToIDR(asset.price)
-                      : `$${asset.price.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        })}`}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right font-semibold whitespace-nowrap pr-4 sm:pr-6",
-                      asset.change24h >= 0
-                        ? "text-emerald-500"
-                        : "text-rose-500",
-                    )}
+              {assets.map((asset) => {
+                const isActive = activeSymbol === asset.symbol;
+
+                return (
+                  <TableRow
+                    key={asset.symbol}
+                    className={cn(isActive && "bg-primary/5")}
                   >
-                    {asset.change24h >= 0 ? "+" : ""}
-                    {asset.change24h.toFixed(2)}%
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell className="pl-4 sm:pl-6 pr-0 w-12">
+                      <AssetLogo
+                        symbol={asset.symbol}
+                        name={asset.name}
+                        assetType={asset.asset_type}
+                      />
+                    </TableCell>
+
+                    <TableCell className="text-left font-medium">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-foreground leading-snug truncate">
+                          {asset.symbol}
+                        </span>
+                        <span className="text-xs text-muted-foreground leading-snug truncate">
+                          {asset.name}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="text-right font-semibold whitespace-nowrap">
+                      {currency === "IDR"
+                        ? convertToIDR(asset.price)
+                        : `$${asset.price.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 4,
+                          })}`}
+                    </TableCell>
+
+                    <TableCell
+                      className={cn(
+                        "text-right font-semibold whitespace-nowrap pr-4 sm:pr-6",
+                        asset.change24h >= 0
+                          ? "text-emerald-500"
+                          : "text-rose-500",
+                      )}
+                    >
+                      {asset.change24h >= 0 ? "+" : ""}
+                      {asset.change24h.toFixed(2)}%
+                    </TableCell>
+
+                    <TableCell className="text-right text-muted-foreground whitespace-nowrap font-medium">
+                      {asset.volume24h
+                        ? formatVolume(asset.volume24h, currency)
+                        : "-"}
+                    </TableCell>
+
+                    <TableCell className="text-center pr-4 sm:pr-6 whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        variant={isActive ? "default" : "outline"}
+                        className="h-7 px-2.5 text-xs gap-1.5"
+                        onClick={() => onSelectSymbol?.(asset.symbol)}
+                      >
+                        <LineChart className="size-3.5" />
+                        <span>{isActive ? "Aktif" : "Chart"}</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

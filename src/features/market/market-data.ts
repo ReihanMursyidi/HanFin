@@ -52,7 +52,10 @@ type BinanceTickerRaw = {
   priceChangePercent: string;
   highPrice: string;
   lowPrice: string;
+  bidPrice: string;
+  askPrice: string;
   volume: string;
+  quoteVolume: string;
 };
 
 export const getCryptoMarketData = unstable_cache(
@@ -81,7 +84,7 @@ export const getCryptoMarketData = unstable_cache(
           change24h: Number(ticker.priceChangePercent),
           high24h: Number(ticker.highPrice),
           low24h: Number(ticker.lowPrice),
-          volume24h: Number(ticker.volume),
+          volume24h: Number(ticker.quoteVolume),
           currency: "USD",
         };
       });

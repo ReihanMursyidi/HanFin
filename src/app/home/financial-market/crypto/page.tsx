@@ -61,30 +61,28 @@ export default async function CryptoMarketPage() {
 
   const marketAssets = marketAssetsRaw.map((asset) => ({
     ...asset,
-
     price: convertCurrency(asset.price, asset.currency, currency, fxRate),
-
+    volume24h: asset.volume24h
+      ? convertCurrency(asset.volume24h, asset.currency, currency, fxRate)
+      : undefined,
     currency,
   }));
 
   return (
     <MarketPageView
       assetType="crypto"
-
       currency={currency}
-
       portfolioAssets={portfolioAssets}
-
       chartData={chartData}
-
       activeSymbol={activeSymbol}
-
       marketAssets={marketAssets}
-
       transactions={transactions}
-
       header={
-        <section id="header" className="space-y-1 min-w-0 w-full sm:pr-0">
+        <section
+          key="header"
+          id="header"
+          className="space-y-1 min-w-0 w-full sm:pr-0"
+        >
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary leading-snug">
             Crypto Market
           </h1>

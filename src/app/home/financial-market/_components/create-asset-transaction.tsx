@@ -138,7 +138,7 @@ export function CreateAssetTransaction({
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5 text-xs font-semibold">
           <Plus className="size-4" />
-          Tambah Transaksi {assetType === "stocks" ? "Saham" : "Kripto"}
+          Tambah Transaksi
         </Button>
       </DialogTrigger>
 

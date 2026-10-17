@@ -16,7 +16,7 @@ export interface MarketAsset {
   sparkline?: number[];
 }
 
-// Data Candlestick
+// Data Candlestick (OHLC + Volume)
 export interface OHLCData {
   time: string;
   open: number;
@@ -97,9 +97,9 @@ export interface AIAnalysisResponse {
   recommendation: "Beli" | "Jual" | "Tahan" | "Wait & See";
   riskLevel: "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi";
   targetPrices?: {
-    entryPrice: number; // Area Harga Beli
-    takeProfit: number; // Target Harga Jual
-    stopLoss: number; // Batas Risiko / Cut Loss
+    entryPrice: number;
+    takeProfit: number;
+    stopLoss: number;
   };
   trendAnalysis: string;
   momentumAnalysis: string;
