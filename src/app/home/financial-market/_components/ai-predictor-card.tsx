@@ -42,6 +42,10 @@ import type {
   TrendIndicator,
   VolumeIndicator,
 } from "@/features/market/types";
+import {
+  UI_CRYPTO_OPTIONS,
+  UI_STOCK_OPTIONS,
+} from "@/constants/market-constant";
 
 const STRATEGY_LABELS: Record<TradingStrategy, string> = {
   scalping: "Scalping",
@@ -49,21 +53,6 @@ const STRATEGY_LABELS: Record<TradingStrategy, string> = {
   swing_trading: "Swing Trade",
   investing: "Investing",
 };
-
-const STOCK_ASSETS = [
-  { symbol: "IHSG", name: "Indeks Harga Saham Gabungan" },
-  { symbol: "BBCA", name: "Bank Central Asia" },
-  { symbol: "BBRI", name: "Bank Rakyat Indonesia" },
-  { symbol: "BMRI", name: "Bank Mandiri" },
-  { symbol: "TLKM", name: "Telkom Indonesia" },
-];
-
-const CRYPTO_ASSETS = [
-  { symbol: "BTC", name: "Bitcoin" },
-  { symbol: "ETH", name: "Ethereum" },
-  { symbol: "SOL", name: "Solana" },
-  { symbol: "BNB", name: "BNB" },
-];
 
 interface AiPredictorCardProps {
   assetType: AssetType;
@@ -76,7 +65,9 @@ export function AiPredictorCard({
   currency = "IDR",
   className,
 }: AiPredictorCardProps) {
-  const assetList = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
+  // Menggunakan opsi aset terpusat
+  const assetList =
+    assetType === "stocks" ? UI_STOCK_OPTIONS : UI_CRYPTO_OPTIONS;
 
   const [prevAssetType, setPrevAssetType] = useState(assetType);
   const [symbol, setSymbol] = useState(assetList[0].symbol);
@@ -154,6 +145,7 @@ export function AiPredictorCard({
           <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
             <Search className="size-3 text-primary" /> Pilih Aset Diprediksi
           </label>
+
           <Popover open={openSearch} onOpenChange={setOpenSearch}>
             <PopoverTrigger asChild>
               <Button
@@ -170,6 +162,7 @@ export function AiPredictorCard({
                 <ChevronsUpDown className="ml-2 opacity-50 size-3 shrink-0" />
               </Button>
             </PopoverTrigger>
+
             <PopoverContent
               className="w-(--radix-popover-trigger-width) min-w-70 p-2 overflow-hidden"
               align="start"

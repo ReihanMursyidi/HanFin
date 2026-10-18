@@ -16,6 +16,7 @@ import {
 import { convertToIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Currency, MarketAsset } from "@/features/market/types";
+import { getAssetLogoUrl } from "@/constants/market-constant";
 
 interface MarketAssetsTableProps {
   assets: MarketAsset[];
@@ -36,24 +37,6 @@ function formatVolume(val: number, currency: Currency): string {
   if (val >= 1e9) return `$${(val / 1e9).toFixed(2)} B`;
   if (val >= 1e6) return `$${(val / 1e6).toFixed(2)} M`;
   return `$${val.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-}
-
-function getAssetLogoUrl(symbol: string, assetType: string): string {
-  const cleanSymbol = symbol.toUpperCase().replace(".JK", "");
-
-  if (assetType === "crypto") {
-    return `https://assets.coincap.io/assets/icons/${cleanSymbol.toLowerCase()}@2x.png`;
-  }
-
-  const stockLogos: Record<string, string> = {
-    IHSG: "https://s3-symbol-logo.tradingview.com/indices/jakarta-composite-index--big.svg",
-    BBCA: "https://s3-symbol-logo.tradingview.com/bank-central-asia--big.svg",
-    BBRI: "https://s3-symbol-logo.tradingview.com/bank-rakyat-indonesia--big.svg",
-    BMRI: "https://s3-symbol-logo.tradingview.com/bank-mandiri--big.svg",
-    TLKM: "https://s3-symbol-logo.tradingview.com/telekom-indonesia--big.svg",
-  };
-
-  return stockLogos[cleanSymbol] || "";
 }
 
 function AssetLogo({
@@ -97,6 +80,9 @@ export function MarketAssetsTable({
   activeSymbol,
   onSelectSymbol,
 }: MarketAssetsTableProps) {
+  // Hanya ambil 6 aset utama untuk tabel
+  const displayAssets = assets.slice(0, 6);
+
   return (
     <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
       <CardHeader className="pb-3 border-b">
@@ -120,7 +106,7 @@ export function MarketAssetsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {assets.map((asset) => {
+              {displayAssets.map((asset) => {
                 const isActive = activeSymbol === asset.symbol;
 
                 return (
