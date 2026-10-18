@@ -191,9 +191,11 @@ export function CreateAssetTransaction({
             <Popover open={openSearch} onOpenChange={setOpenSearch}>
               <PopoverTrigger asChild>
                 <Button
+                  id="select-transaction-asset"
                   variant="outline"
                   role="combobox"
                   aria-expanded={openSearch}
+                  aria-controls="transaction-asset-popover-list"
                   className="w-full justify-between h-9 text-xs font-semibold"
                 >
                   {selectedAsset
@@ -202,7 +204,11 @@ export function CreateAssetTransaction({
                   <ChevronsUpDown className="ml-2 size-3 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-93.75 p-2" align="start">
+              <PopoverContent
+                id="transaction-asset-popover-list"
+                className="w-93.75 p-2"
+                align="start"
+              >
                 <div className="flex items-center border-b px-2 pb-2 mb-2">
                   <Search className="mr-2 size-3.5 shrink-0 opacity-50" />
                   <Input
