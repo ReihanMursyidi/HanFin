@@ -87,8 +87,8 @@ export async function handleWizardInput(message: string) {
   }
 }
 
-// 2. HANDLE WIZARD TOOLS (Multi-turn Function Calling)
-export async function handleWizardTools(formData: FormData) {
+// 1. Helper: Parsing & Validasi Form Data Input
+async function parseWizardInput(formData: FormData) {
   const type = formData.get("type") as "audio" | "text";
   const file = formData.get("file");
   const request = (formData.get("request") as string) || "";
@@ -108,7 +108,17 @@ export async function handleWizardTools(formData: FormData) {
     base64Data = Buffer.from(arrayBuffer).toString("base64");
   }
 
-  const contents: Content[] = [
+  return { type, request, mimeType, base64Data };
+}
+
+// 2. Helper: Konstruksi Konten Awal Prompt AI
+function buildInitialContents(
+  type: "audio" | "text",
+  request: string,
+  mimeType: string,
+  base64Data: string,
+): Content[] {
+  return [
     {
       role: "user",
       parts: [
@@ -142,15 +152,72 @@ export async function handleWizardTools(formData: FormData) {
       ],
     },
   ];
+}
+
+// 3. Helper: Eksekusi Tool Call Berdasarkan Nama Fungsi
+async function executeToolCall(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  switch (name) {
+    case "get_transaction": {
+      const dataFind = await findEmbedding(JSON.stringify(args || {}), 0.3, 1);
+      return dataFind?.[0] || { message: "Transaction not found" };
+    }
+
+    case "create_transaction": {
+      const transaction = transactionSchema.parse(args);
+      if (transaction.amount <= 0) {
+        throw new Error("Nominal transaksi harus lebih dari 0.");
+      }
+      await createTransaction(transaction);
+      return {
+        status: "success",
+        message: "Transaction created successfully",
+      };
+    }
+
+    case "delete_transaction": {
+      const data = await findEmbedding(JSON.stringify(args || {}), 0.3, 1);
+      if (!data || data.length === 0 || !data[0].id) {
+        throw new Error("Transaksi yang ingin dihapus tidak ditemukan.");
+      }
+      const targetId = String(data[0].id);
+      await deleteTransaction(targetId);
+      return { status: "success", deletedId: targetId };
+    }
+
+    case "update_transaction": {
+      if (!args || typeof args !== "object" || !("id" in args) || !args.id) {
+        throw new Error("Transaction ID is required for update");
+      }
+      const newData = transactionSchema.parse(args);
+      if (newData.amount <= 0) {
+        throw new Error("Nominal transaksi harus lebih dari 0.");
+      }
+      const targetId = String((args as { id: unknown }).id);
+      await updateTransaction(targetId, newData);
+      return {
+        status: "success",
+        updatedId: targetId,
+      };
+    }
+
+    default:
+      throw new Error(`Unknown function call: ${name}`);
+  }
+}
+
+// 2. HANDLE WIZARD TOOLS (Multi-turn Function Calling)
+export async function handleWizardTools(formData: FormData) {
+  const { type, request, mimeType, base64Data } =
+    await parseWizardInput(formData);
+  const contents = buildInitialContents(type, request, mimeType, base64Data);
 
   const ai = createAI();
-  let running = true;
-  let loopCount = 0;
-  const MAX_LOOPS = 5; // Circuit breaker untuk mencegah perulangan tak terbatas
+  const MAX_LOOPS = 5;
 
-  while (running && loopCount < MAX_LOOPS) {
-    loopCount++;
-
+  for (let loopCount = 0; loopCount < MAX_LOOPS; loopCount++) {
     const response = await ai.models.generateContent({
       model: AI_MODEL,
       contents,
@@ -170,108 +237,44 @@ export async function handleWizardTools(formData: FormData) {
 
     const functionCalls = response.functionCalls;
 
-    if (functionCalls && functionCalls.length > 0) {
-      if (response.candidates?.[0]?.content) {
-        contents.push(response.candidates[0].content);
-      }
-
-      const functionResponseParts = await Promise.all(
-        functionCalls.map(async (functionCall) => {
-          const { name, args, id } = functionCall;
-          let resultData: Record<string, unknown> = {};
-
-          try {
-            switch (name) {
-              case "get_transaction": {
-                const dataFind = await findEmbedding(
-                  JSON.stringify(args || {}),
-                  0.3,
-                  1,
-                );
-                resultData = dataFind?.[0] || {
-                  message: "Transaction not found",
-                };
-                break;
-              }
-
-              case "create_transaction": {
-                const transaction = transactionSchema.parse(args);
-                if (transaction.amount <= 0) {
-                  throw new Error("Nominal transaksi harus lebih dari 0.");
-                }
-                await createTransaction(transaction);
-                resultData = {
-                  status: "success",
-                  message: "Transaction created successfully",
-                };
-                break;
-              }
-
-              case "delete_transaction": {
-                const data = await findEmbedding(
-                  JSON.stringify(args || {}),
-                  0.3,
-                  1,
-                );
-                if (!data || data.length === 0) {
-                  throw new Error(
-                    "Transaksi yang ingin dihapus tidak ditemukan.",
-                  );
-                }
-                const deletedData = data[0];
-                await deleteTransaction(deletedData.id);
-                resultData = { status: "success", deletedId: deletedData.id };
-                break;
-              }
-
-              case "update_transaction": {
-                if (!args || typeof args !== "object" || !("id" in args)) {
-                  throw new Error("Transaction ID is required for update");
-                }
-                const newData = transactionSchema.parse(args);
-                if (newData.amount <= 0) {
-                  throw new Error("Nominal transaksi harus lebih dari 0.");
-                }
-                await updateTransaction(
-                  String((args as { id: string }).id),
-                  newData,
-                );
-                resultData = {
-                  status: "success",
-                  updatedId: (args as { id: string }).id,
-                };
-                break;
-              }
-
-              default:
-                throw new Error(`Unknown function call: ${name}`);
-            }
-          } catch (err) {
-            // Operkan error message ke Gemini agar AI dapat menjelaskan masalahnya ke user
-            resultData = {
-              status: "error",
-              error: err instanceof Error ? err.message : "Execution failed",
-            };
-          }
-
-          return {
-            functionResponse: {
-              name,
-              response: { result: resultData },
-              id,
-            },
-          };
-        }),
-      );
-
-      contents.push({
-        role: "user",
-        parts: functionResponseParts,
-      });
-    } else {
-      running = false;
+    if (!functionCalls || functionCalls.length === 0) {
       return response.text || "Proses selesai.";
     }
+
+    if (response.candidates?.[0]?.content) {
+      contents.push(response.candidates[0].content);
+    }
+
+    const functionResponseParts = await Promise.all(
+      functionCalls.map(async ({ name, args, id }) => {
+        let resultData: Record<string, unknown>;
+        const callName = name ?? "";
+        try {
+          resultData = await executeToolCall(
+            callName,
+            (args as Record<string, unknown>) || {},
+          );
+        } catch (err) {
+          resultData = {
+            status: "error",
+            error: err instanceof Error ? err.message : "Execution failed",
+          };
+        }
+
+        return {
+          functionResponse: {
+            name: callName,
+            response: { result: resultData },
+            id: id ?? "",
+          },
+        };
+      }),
+    );
+
+    contents.push({
+      role: "user",
+      parts: functionResponseParts,
+    });
   }
 
   return "Proses selesai.";
