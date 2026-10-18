@@ -54,6 +54,7 @@ const TABLE_HEADER = [
 ];
 
 type TransactionsResponse = Awaited<ReturnType<typeof getTransactions>>;
+type TransactionItem = NonNullable<TransactionsResponse["data"]>[number];
 
 interface TransactionTableProps {
   transactions?: TransactionsResponse;
@@ -67,7 +68,89 @@ interface TransactionTableProps {
   onAddClick?: () => void;
 }
 
-// 2. MAIN COMPONENT
+interface TransactionTableRowProps {
+  transaction: TransactionItem;
+  index: number;
+  page: number;
+  limit: number;
+  onSelectTransaction: (state: SelectedTransactionState) => void;
+}
+
+// 2. SUB-COMPONENT HELPER UNTUK BARIS TABEL
+function TransactionTableRow({
+  transaction,
+  index,
+  page,
+  limit,
+  onSelectTransaction,
+}: TransactionTableRowProps) {
+  const isExpense = transaction.type === "expense";
+
+  return (
+    <TableRow className="transition-colors hover:bg-muted/30">
+      <TableCell className="font-medium text-muted-foreground">
+        {(page - 1) * limit + index + 1}
+      </TableCell>
+      <TableCell className="font-medium whitespace-nowrap">
+        {new Date(transaction.date).toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}
+      </TableCell>
+      <TableCell className="truncate max-w-50" title={transaction.description}>
+        {transaction.description}
+      </TableCell>
+      <TableCell>
+        <span className="px-2.5 py-1 text-xs rounded-full bg-secondary text-secondary-foreground font-medium border border-border/50">
+          {transaction.category}
+        </span>
+      </TableCell>
+      <TableCell
+        className={cn(
+          "font-semibold whitespace-nowrap",
+          isExpense ? "text-red-500" : "text-emerald-500",
+        )}
+      >
+        {convertToIDR(transaction.amount)}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Edit transaction"
+            className="size-8 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
+            onClick={() =>
+              onSelectTransaction({
+                data: transaction,
+                action: "update",
+              })
+            }
+          >
+            <PencilIcon className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Delete transaction"
+            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            onClick={() =>
+              onSelectTransaction({
+                data: transaction,
+                action: "delete",
+              })
+            }
+          >
+            <Trash2Icon className="size-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// 3. MAIN COMPONENT
 export default function TransactionTable({
   transactions,
   isLoading,
@@ -171,84 +254,21 @@ export default function TransactionTable({
                 )}
 
                 {!isLoading &&
-                  sortedTransactions.map((transaction, index) => {
-                    const isExpense = transaction.type === "expense";
-
-                    return (
-                      <TableRow
-                        key={`tr-${transaction.id}`}
-                        className="transition-colors hover:bg-muted/30"
-                      >
-                        <TableCell className="font-medium text-muted-foreground">
-                          {(page - 1) * limit + index + 1}
-                        </TableCell>
-                        <TableCell className="font-medium whitespace-nowrap">
-                          {new Date(transaction.date).toLocaleDateString(
-                            "id-ID",
-                            {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            },
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className="truncate max-w-50"
-                          title={transaction.description}
-                        >
-                          {transaction.description}
-                        </TableCell>
-                        <TableCell>
-                          <span className="px-2.5 py-1 text-xs rounded-full bg-secondary text-secondary-foreground font-medium border border-border/50">
-                            {transaction.category}
-                          </span>
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            "font-semibold whitespace-nowrap",
-                            isExpense ? "text-red-500" : "text-emerald-500",
-                          )}
-                        >
-                          {convertToIDR(transaction.amount)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
-                              onClick={() =>
-                                setSelectedTransaction({
-                                  data: transaction,
-                                  action: "update",
-                                })
-                              }
-                            >
-                              <PencilIcon className="size-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() =>
-                                setSelectedTransaction({
-                                  data: transaction,
-                                  action: "delete",
-                                })
-                              }
-                            >
-                              <Trash2Icon className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  sortedTransactions.map((transaction, index) => (
+                    <TransactionTableRow
+                      key={`tr-${transaction.id}`}
+                      transaction={transaction}
+                      index={index}
+                      page={page}
+                      limit={limit}
+                      onSelectTransaction={setSelectedTransaction}
+                    />
+                  ))}
               </TableBody>
             </Table>
           </div>
 
-          {/* 3. PAGINATION CONTROLS */}
+          {/* PAGINATION CONTROLS */}
           <div className="flex flex-col items-center justify-between gap-4 mt-6 sm:flex-row">
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-muted-foreground">
@@ -317,7 +337,7 @@ export default function TransactionTable({
         </CardContent>
       </Card>
 
-      {/* 4. DIALOGS */}
+      {/* DIALOGS */}
       <DeleteTransactionDialog
         selectedTransaction={selectedTransaction}
         setSelectedTransaction={setSelectedTransaction}
