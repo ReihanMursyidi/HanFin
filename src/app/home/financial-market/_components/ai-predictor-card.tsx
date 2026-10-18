@@ -142,16 +142,21 @@ export function AiPredictorCard({
       <CardContent className="p-4 space-y-4">
         {/* Pilih Aset */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
+          <label
+            htmlFor="select-asset-predict"
+            className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1"
+          >
             <Search className="size-3 text-primary" /> Pilih Aset Diprediksi
           </label>
 
           <Popover open={openSearch} onOpenChange={setOpenSearch}>
             <PopoverTrigger asChild>
               <Button
+                id="select-asset-predict"
                 variant="outline"
                 role="combobox"
                 aria-expanded={openSearch}
+                aria-controls="asset-predict-popover-list"
                 className="justify-between w-full px-3 text-xs font-semibold h-9"
               >
                 <span className="truncate">
@@ -216,14 +221,20 @@ export function AiPredictorCard({
 
         {/* Metode Trading */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1">
+          <label
+            htmlFor="select-trading-strategy"
+            className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1"
+          >
             <Target className="size-3 text-primary" /> Metode Trading
           </label>
           <Select
             value={strategy}
             onValueChange={(v) => setStrategy(v as TradingStrategy)}
           >
-            <SelectTrigger className="text-xs font-semibold h-9">
+            <SelectTrigger
+              id="select-trading-strategy"
+              className="text-xs font-semibold h-9"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -246,14 +257,20 @@ export function AiPredictorCard({
         {/* Indikator Teknikal Grid */}
         <div className="grid grid-cols-3 gap-2 pt-1 border-t">
           <div>
-            <label className="text-[10px] font-medium text-muted-foreground uppercase block truncate">
+            <label
+              htmlFor="select-trend-indicator"
+              className="text-[10px] font-medium text-muted-foreground uppercase block truncate"
+            >
               Trend
             </label>
             <Select
               value={trend}
               onValueChange={(v) => setTrend(v as TrendIndicator)}
             >
-              <SelectTrigger className="h-8 px-2 text-xs">
+              <SelectTrigger
+                id="select-trend-indicator"
+                className="h-8 px-2 text-xs"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -265,14 +282,20 @@ export function AiPredictorCard({
           </div>
 
           <div>
-            <label className="text-[10px] font-medium text-muted-foreground uppercase block truncate">
+            <label
+              htmlFor="select-momentum-indicator"
+              className="text-[10px] font-medium text-muted-foreground uppercase block truncate"
+            >
               Momentum
             </label>
             <Select
               value={momentum}
               onValueChange={(v) => setMomentum(v as MomentumIndicator)}
             >
-              <SelectTrigger className="h-8 px-2 text-xs">
+              <SelectTrigger
+                id="select-momentum-indicator"
+                className="h-8 px-2 text-xs"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -284,14 +307,20 @@ export function AiPredictorCard({
           </div>
 
           <div>
-            <label className="text-[10px] font-medium text-muted-foreground uppercase block truncate">
+            <label
+              htmlFor="select-volume-indicator"
+              className="text-[10px] font-medium text-muted-foreground uppercase block truncate"
+            >
               Volume
             </label>
             <Select
               value={volume}
               onValueChange={(v) => setVolume(v as VolumeIndicator)}
             >
-              <SelectTrigger className="h-8 px-2 text-xs">
+              <SelectTrigger
+                id="select-volume-indicator"
+                className="h-8 px-2 text-xs"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
