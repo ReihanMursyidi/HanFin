@@ -33,7 +33,7 @@ function getCurrencyFromProfile(profile: unknown): Currency {
 }
 
 export const metadata: Metadata = {
-  title: "Pasar Kripto (Crypto) - Financial Market | HanFin",
+  title: "Pasar Kripto - Financial Market",
 
   description:
     "Pantau harga Bitcoin dan aset kripto utama 24/7, kelola portofolio, dan dapatkan prediksi sinyal pasar AI.",
@@ -83,7 +83,7 @@ export default async function CryptoMarketPage() {
           id="header"
           className="space-y-1 min-w-0 w-full sm:pr-0"
         >
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary leading-snug">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             Crypto Market
           </h1>
 

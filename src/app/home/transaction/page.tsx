@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Transaction from "./_components/transaction";
 
 export const metadata: Metadata = {
-  title: "HanFin - Transaction",
+  title: "Transaction",
   description: "Your personal financial transactions",
 };
 

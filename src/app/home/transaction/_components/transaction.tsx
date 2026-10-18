@@ -28,7 +28,7 @@ export default function Transaction() {
     <div className="space-y-4 custom-scrollbar">
       <div className="flex items-center justify-between gap-4 px-1">
         <section id="header" className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             Transaction
           </h1>
           <p className="text-xs sm:text-sm md:text-base">

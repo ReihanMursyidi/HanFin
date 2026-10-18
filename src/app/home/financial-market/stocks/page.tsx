@@ -27,7 +27,7 @@ function getCurrencyFromProfile(profile: unknown): Currency {
 }
 
 export const metadata: Metadata = {
-  title: "Saham Indonesia (IHSG) - Financial Market | HanFin",
+  title: "Pasar Saham Indonesia - Financial Market",
 
   description:
     "Pantau pergerakan Saham Indonesia & IHSG real-time, kelola portofolio, dan analisis sinyal pasar dengan AI.",
@@ -73,7 +73,7 @@ export default async function StocksMarketPage() {
           id="header"
           className="space-y-1 min-w-0 w-full sm:pr-0"
         >
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary leading-snug">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             Stocks Market
           </h1>
 
