@@ -24,10 +24,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const AI_MODEL = "gemini-3-flash-preview";
 
-// ==========================================
 // FUNCTION DECLARATIONS UNTUK AI TOOL CALLING
-// ==========================================
-
 const createMarketTransactionDeclaration: FunctionDeclaration = {
   name: "create_market_transaction",
   description:
@@ -80,9 +77,198 @@ const deleteMarketTransactionDeclaration = {
   },
 };
 
-// ==========================================
+// 1. HELPER: PARSING & VALIDASI INPUT WIZARD
+async function parseMarketWizardInput(formData: FormData) {
+  const type = (formData.get("type") as "audio" | "text") || "text";
+  const file = formData.get("file");
+  const request = (formData.get("request") as string) || "";
+  const assetType = (formData.get("assetType") as AssetType) || "stocks";
+  const userCurrency = (formData.get("currency") as Currency) || "IDR";
+
+  if (
+    type === "audio" &&
+    (!file || !(file instanceof File) || file.size === 0)
+  ) {
+    throw new Error("File audio tidak valid untuk diproses.");
+  }
+
+  let mimeType = "";
+  let base64Data = "";
+
+  if (type === "audio" && file instanceof File) {
+    mimeType = file.type || "audio/webm";
+    const arrayBuffer = await file.arrayBuffer();
+    base64Data = Buffer.from(arrayBuffer).toString("base64");
+  }
+
+  return { type, request, assetType, userCurrency, mimeType, base64Data };
+}
+
+// 2. HELPER: KONSTRUKSI PROMPT AWAL WIZARD
+function buildMarketWizardContents(
+  type: "audio" | "text",
+  request: string,
+  assetType: AssetType,
+  userCurrency: Currency,
+  mimeType: string,
+  base64Data: string,
+): Content[] {
+  const assetOptions = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
+  const assetListText = assetOptions
+    .map((a) => `${a.shortSymbol} (${a.name})`)
+    .join(", ");
+
+  return [
+    {
+      role: "user",
+      parts: [
+        ...(type === "audio"
+          ? [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
+              },
+            ]
+          : []),
+        {
+          text: `
+            <role>
+              You are an AI Wizard Financial Assistant managing ${assetType.toUpperCase()} market transactions via ${type}.
+            </role>
+            <strict_rules>
+              1. DO NOT CALL ANY FUNCTION/TOOL if the input is noise, random words/garbage, general conversation irrelevant to market transactions, or does not contain a clear transaction intention (buy/sell). 
+              2. DO NOT guess, fabricate, or assume asset symbols, quantities, or prices if the user has not explicitly stated them. 
+              3. ONLY call 'create_market_transaction' if the user explicitly mentions a financial action (buy/sell) AND an asset name/symbol found in the list of valid assets: [${assetListText}]. 
+              4. If the input is irrelevant, unclear, or not a transaction instruction, DO NOT CALL ANY FUNCTION. Simply return a text response in Indonesian explaining that the instruction cannot be understood as a market transaction. 
+            </strict_rules>
+            <instruction>
+              - Extract transaction intent from ${type === "text" ? "the provided text" : "the audio file"} in Bahasa Indonesia.
+              - Target Category: ${assetType.toUpperCase()}
+              - Valid Symbols: [${assetListText}]
+              - Target Currency: ${userCurrency}
+              - For Indonesian Stocks: 1 LOT = 100 LEMBAR. Quantity argument MUST be passed in total LEMBAR.
+              - If price_per_unit is not stated, set it to 0.
+              - Call 'create_market_transaction' or 'delete_market_transaction' functions accordingly.
+              - Provide a concise final summary in Bahasa Indonesia once tool executions complete.
+            </instruction>
+            <context>
+              Current Date: ${new Date().toISOString()}
+            </context>
+            ${type === "text" ? `<input>Text to extract: ${request}</input>` : ""}
+          `,
+        },
+      ],
+    },
+  ];
+}
+
+// 3. HELPER: EKSEKUSI TOOL CALL BERDASARKAN NAMA FUNGSI
+async function executeMarketToolCall(
+  name: string,
+  args: Record<string, unknown>,
+  assetType: AssetType,
+  userCurrency: Currency,
+  type: "audio" | "text",
+): Promise<Record<string, unknown>> {
+  const assetOptions = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
+
+  switch (name) {
+    case "create_market_transaction": {
+      const symbolArg = String(args?.symbol || "").toUpperCase();
+      const txType = (args?.transaction_type as "buy" | "sell") || "buy";
+      const quantity = Number(args?.quantity) || 0;
+      let pricePerUnit = Number(args?.price_per_unit) || 0;
+      const notes = (args?.notes as string) || null;
+
+      if (quantity <= 0) {
+        throw new Error("Nominal kuantitas harus lebih besar dari 0.");
+      }
+
+      const matchedAsset = assetOptions.find(
+        (a) => a.shortSymbol.toUpperCase() === symbolArg,
+      );
+      const symbol = matchedAsset?.shortSymbol || symbolArg;
+      const assetName = matchedAsset?.name || symbol;
+
+      // Otomatis fetch harga pasar terkini jika pengguna tidak memberikan harga
+      if (pricePerUnit <= 0) {
+        const fxRate = await getExchangeRateUSDIDR();
+        const marketData =
+          assetType === "crypto"
+            ? await getCryptoMarketData()
+            : await getStockMarketData();
+
+        const matchedItem = marketData.find(
+          (m) => m.symbol.toUpperCase() === symbol.toUpperCase(),
+        );
+
+        if (matchedItem && matchedItem.price) {
+          const baseMarketCurrency: Currency =
+            assetType === "crypto" ? "USD" : "IDR";
+          pricePerUnit = convertCurrency(
+            matchedItem.price,
+            baseMarketCurrency,
+            userCurrency,
+            fxRate,
+          );
+        } else {
+          throw new Error(
+            `Harga real-time untuk ${symbol} tidak ditemukan. Harap sebutkan harga secara eksplisit.`,
+          );
+        }
+      }
+
+      const totalAmount = quantity * pricePerUnit;
+
+      await createMarketTransaction({
+        symbol,
+        asset_name: assetName,
+        asset_type: assetType,
+        transaction_type: txType,
+        quantity,
+        price_per_unit: pricePerUnit,
+        total_amount: totalAmount,
+        currency: userCurrency,
+        notes: notes || `Input via AI Market Wizard (${type})`,
+      });
+
+      return {
+        status: "success",
+        message: `Transaksi ${txType.toUpperCase()} ${symbol} berhasil dicatat.`,
+        quantity,
+        pricePerUnit,
+        totalAmount,
+      };
+    }
+
+    case "delete_market_transaction": {
+      const symbolArg = String(args?.symbol || "").toUpperCase();
+      const existingTxs = await getMarketTransactions(assetType, 20);
+      const targetTx = existingTxs.find(
+        (tx) => tx.symbol.toUpperCase() === symbolArg,
+      );
+
+      if (!targetTx) {
+        throw new Error(
+          `Transaksi untuk aset ${symbolArg} tidak ditemukan di riwayat.`,
+        );
+      }
+
+      await deleteMarketTransaction(targetTx.id);
+      return {
+        status: "success",
+        message: `Transaksi ${symbolArg} berhasil dihapus.`,
+      };
+    }
+
+    default:
+      throw new Error(`Fungsi tidak dikenal: ${name}`);
+  }
+}
+
 // MAIN WIZARD HANDLER
-// ==========================================
 export async function MarketWizardTransaction(
   promptText: string,
   assetType: AssetType,
@@ -236,85 +422,22 @@ export async function MarketWizardTransaction(
 }
 
 export async function handleMarketWizardTools(formData: FormData) {
-  const type = (formData.get("type") as "audio" | "text") || "text";
-  const file = formData.get("file");
-  const request = (formData.get("request") as string) || "";
-  const assetType = (formData.get("assetType") as AssetType) || "stocks";
-  const userCurrency = (formData.get("currency") as Currency) || "IDR";
+  const { type, request, assetType, userCurrency, mimeType, base64Data } =
+    await parseMarketWizardInput(formData);
 
-  if (type === "audio") {
-    if (!file || !(file instanceof File) || file.size === 0) {
-      throw new Error("File audio tidak valid untuk diproses.");
-    }
-  }
-
-  let mimeType = "";
-  let base64Data = "";
-
-  if (type === "audio" && file instanceof File) {
-    mimeType = file.type || "audio/webm";
-    const arrayBuffer = await file.arrayBuffer();
-    base64Data = Buffer.from(arrayBuffer).toString("base64");
-  }
-
-  const assetOptions = assetType === "stocks" ? STOCK_ASSETS : CRYPTO_ASSETS;
-  const assetListText = assetOptions
-    .map((a) => `${a.shortSymbol} (${a.name})`)
-    .join(", ");
-
-  const contents: Content[] = [
-    {
-      role: "user",
-      parts: [
-        ...(type === "audio"
-          ? [
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Data,
-                },
-              },
-            ]
-          : []),
-        {
-          text: `
-            <role>
-              You are an AI Wizard Financial Assistant managing ${assetType.toUpperCase()} market transactions via ${type}.
-            </role>
-            <strict_rules>
-              1. DO NOT CALL ANY FUNCTION/TOOL if the input is noise, random words/garbage, general conversation irrelevant to market transactions, or does not contain a clear transaction intention (buy/sell). 
-              2. DO NOT guess, fabricate, or assume asset symbols, quantities, or prices if the user has not explicitly stated them. 
-              3. ONLY call 'create_market_transaction' if the user explicitly mentions a financial action (buy/sell) AND an asset name/symbol found in the list of valid assets: [${assetListText}]. 
-              4. If the input is irrelevant, unclear, or not a transaction instruction, DO NOT CALL ANY FUNCTION. Simply return a text response in Indonesian explaining that the instruction cannot be understood as a market transaction. 
-            </strict_rules>
-            <instruction>
-              - Extract transaction intent from ${type === "text" ? "the provided text" : "the audio file"} in Bahasa Indonesia.
-              - Target Category: ${assetType.toUpperCase()}
-              - Valid Symbols: [${assetListText}]
-              - Target Currency: ${userCurrency}
-              - For Indonesian Stocks: 1 LOT = 100 LEMBAR. Quantity argument MUST be passed in total LEMBAR.
-              - If price_per_unit is not stated, set it to 0.
-              - Call 'create_market_transaction' or 'delete_market_transaction' functions accordingly.
-              - Provide a concise final summary in Bahasa Indonesia once tool executions complete.
-            </instruction>
-            <context>
-              Current Date: ${new Date().toISOString()}
-            </context>
-            ${type === "text" ? `<input>Text to extract: ${request}</input>` : ""}
-          `,
-        },
-      ],
-    },
-  ];
+  const contents = buildMarketWizardContents(
+    type,
+    request,
+    assetType,
+    userCurrency,
+    mimeType,
+    base64Data,
+  );
 
   const ai = createAI();
-  let running = true;
-  let loopCount = 0;
   const MAX_LOOPS = 5;
 
-  while (running && loopCount < MAX_LOOPS) {
-    loopCount++;
-
+  for (let loopCount = 0; loopCount < MAX_LOOPS; loopCount++) {
     const response = await ai.models.generateContent({
       model: AI_MODEL,
       contents,
@@ -332,141 +455,50 @@ export async function handleMarketWizardTools(formData: FormData) {
 
     const functionCalls = response.functionCalls;
 
-    if (functionCalls && functionCalls.length > 0) {
-      if (response.candidates?.[0]?.content) {
-        contents.push(response.candidates[0].content);
-      }
-
-      const functionResponseParts = await Promise.all(
-        functionCalls.map(async (functionCall) => {
-          const { name, args, id } = functionCall;
-          let resultData: Record<string, unknown> = {};
-
-          try {
-            switch (name) {
-              case "create_market_transaction": {
-                const symbolArg = String(args?.symbol || "").toUpperCase();
-                const txType =
-                  (args?.transaction_type as "buy" | "sell") || "buy";
-                const quantity = Number(args?.quantity) || 0;
-                let pricePerUnit = Number(args?.price_per_unit) || 0;
-                const notes = (args?.notes as string) || null;
-
-                if (quantity <= 0) {
-                  throw new Error(
-                    "Nominal kuantitas harus lebih besar dari 0.",
-                  );
-                }
-
-                const matchedAsset = assetOptions.find(
-                  (a) => a.shortSymbol.toUpperCase() === symbolArg,
-                );
-                const symbol = matchedAsset?.shortSymbol || symbolArg;
-                const assetName = matchedAsset?.name || symbol;
-
-                // Otomatis fetch harga pasar terkini jika pengguna tidak memberikan harga
-                if (pricePerUnit <= 0) {
-                  const fxRate = await getExchangeRateUSDIDR();
-                  const marketData =
-                    assetType === "crypto"
-                      ? await getCryptoMarketData()
-                      : await getStockMarketData();
-
-                  const matchedItem = marketData.find(
-                    (m) => m.symbol.toUpperCase() === symbol.toUpperCase(),
-                  );
-
-                  if (matchedItem && matchedItem.price) {
-                    const baseMarketCurrency: Currency =
-                      assetType === "crypto" ? "USD" : "IDR";
-                    pricePerUnit = convertCurrency(
-                      matchedItem.price,
-                      baseMarketCurrency,
-                      userCurrency,
-                      fxRate,
-                    );
-                  } else {
-                    throw new Error(
-                      `Harga real-time untuk ${symbol} tidak ditemukan. Harap sebutkan harga secara eksplisit.`,
-                    );
-                  }
-                }
-
-                const totalAmount = quantity * pricePerUnit;
-
-                await createMarketTransaction({
-                  symbol,
-                  asset_name: assetName,
-                  asset_type: assetType,
-                  transaction_type: txType,
-                  quantity,
-                  price_per_unit: pricePerUnit,
-                  total_amount: totalAmount,
-                  currency: userCurrency,
-                  notes: notes || `Input via AI Market Wizard (${type})`,
-                });
-
-                resultData = {
-                  status: "success",
-                  message: `Transaksi ${txType.toUpperCase()} ${symbol} berhasil dicatat.`,
-                  quantity,
-                  pricePerUnit,
-                  totalAmount,
-                };
-                break;
-              }
-
-              case "delete_market_transaction": {
-                const symbolArg = String(args?.symbol || "").toUpperCase();
-                const existingTxs = await getMarketTransactions(assetType, 20);
-                const targetTx = existingTxs.find(
-                  (tx) => tx.symbol.toUpperCase() === symbolArg,
-                );
-
-                if (!targetTx) {
-                  throw new Error(
-                    `Transaksi untuk aset ${symbolArg} tidak ditemukan di riwayat.`,
-                  );
-                }
-
-                await deleteMarketTransaction(targetTx.id);
-                resultData = {
-                  status: "success",
-                  message: `Transaksi ${symbolArg} berhasil dihapus.`,
-                };
-                break;
-              }
-
-              default:
-                throw new Error(`Fungsi tidak dikenal: ${name}`);
-            }
-          } catch (err) {
-            resultData = {
-              status: "error",
-              error: err instanceof Error ? err.message : "Eksekusi gagal.",
-            };
-          }
-
-          return {
-            functionResponse: {
-              name,
-              response: { result: resultData },
-              id,
-            },
-          };
-        }),
-      );
-
-      contents.push({
-        role: "user",
-        parts: functionResponseParts,
-      });
-    } else {
-      running = false;
+    if (!functionCalls || functionCalls.length === 0) {
       revalidatePath("/home/financial-market/stocks");
       revalidatePath("/home/financial-market/crypto");
       return response.text || "Proses transaksi selesai.";
     }
+
+    if (response.candidates?.[0]?.content) {
+      contents.push(response.candidates[0].content);
+    }
+
+    const functionResponseParts = await Promise.all(
+      functionCalls.map(async ({ name, args, id }) => {
+        let resultData: Record<string, unknown>;
+        const callName = name ?? "";
+
+        try {
+          resultData = await executeMarketToolCall(
+            callName,
+            (args as Record<string, unknown>) || {},
+            assetType,
+            userCurrency,
+            type,
+          );
+        } catch (err) {
+          resultData = {
+            status: "error",
+            error: err instanceof Error ? err.message : "Eksekusi gagal.",
+          };
+        }
+
+        return {
+          functionResponse: {
+            name: callName,
+            response: { result: resultData },
+            id: id ?? "",
+          },
+        };
+      }),
+    );
+
+    contents.push({
+      role: "user",
+      parts: functionResponseParts,
+    });
   }
 
   revalidatePath("/home/financial-market/stocks");
