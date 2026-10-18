@@ -2,22 +2,23 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { Loader2Icon, UploadCloudIcon } from "lucide-react";
-import type { DragEvent, ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
-import type { UseFormSetValues } from "react-hook-form";
 import { toast } from "sonner";
 import { extractReceiptData } from "@/features/ai/multimodal";
 import { cn } from "@/lib/utils";
 
-// 1. Bersihkan definisi prop, hapus 'refetch' yang tidak lagi dibutuhkan
+export interface TransactionFormValues {
+  amount: string;
+  type: "income" | "expense";
+  category: string;
+  date: string;
+  description: string;
+}
+
 interface FileDropzoneInputProps {
-  setValues: UseFormSetValues<{
-    amount: string;
-    type: "income" | "expense";
-    category: string;
-    date: string;
-    description: string;
-  }>;
+  // Gunakan penamaan tipe eksplisit agar tidak error saat import react-hook-form
+  setValues: (values: TransactionFormValues) => void;
 }
 
 export default function FileDropzoneInput({
@@ -31,13 +32,15 @@ export default function FileDropzoneInput({
     onSuccess: (response) => {
       // Auto-fill form dengan hasil ekstraksi AI
       setValues({
-        ...response,
-        amount: `${response.amount}`,
+        amount: `${response.amount ?? ""}`,
+        type: response.type ?? "expense",
+        category: response.category ?? "",
+        date: response.date ?? "",
+        description: response.description ?? "",
       });
 
       toast.success("Receipt scanned successfully!");
 
-      // Bersihkan input agar user bisa upload file yang sama jika perlu
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -51,18 +54,33 @@ export default function FileDropzoneInput({
     },
   });
 
-  // 2. Ekstrak logika validasi agar lebih rapi dan deklaratif
-  const isValidFileType = (type: string) => {
+  // Validasi file type dengan fallback nama file jika file.type kosong
+  const isValidFileType = (file: File) => {
+    const type = file.type.toLowerCase();
+    const name = file.name.toLowerCase();
+
+    const validExtensions = [
+      ".pdf",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".mp4",
+      ".mp3",
+    ];
+    const isExtensionValid = validExtensions.some((ext) => name.endsWith(ext));
+
     return (
       type.endsWith("pdf") ||
       type.startsWith("image") ||
       type.startsWith("video") ||
-      type.startsWith("audio")
+      type.startsWith("audio") ||
+      isExtensionValid
     );
   };
 
   const processFile = (file: File) => {
-    if (!isValidFileType(file.type)) {
+    if (!isValidFileType(file)) {
       toast.error(
         "File type not supported. Please upload PDF, Image, Video, or Audio.",
       );
@@ -81,11 +99,12 @@ export default function FileDropzoneInput({
     }
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setIsDragging(false);
 
-    // Bersihkan value input sebelumnya agar tidak bentrok
+    if (isPending) return;
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -107,26 +126,18 @@ export default function FileDropzoneInput({
         aria-hidden="true"
       />
 
-      {/* 3. Gunakan <div> interaktif dengan role="button" ketimbang elemen <button> murni 
-             untuk menghindari masalah re-render / auto-submit di dalam form */}
-      <div
-        role="button"
-        tabIndex={0}
-        onDragOver={(e) => {
+      <button
+        type="button"
+        disabled={isPending}
+        onDragOver={(e: React.DragEvent<HTMLButtonElement>) => {
           e.preventDefault();
           setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => !isPending && fileInputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (!isPending && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            fileInputRef.current?.click();
-          }
-        }}
         className={cn(
-          "w-full border-2 border-dashed rounded-xl p-6 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50",
+          "w-full border-2 border-dashed rounded-xl p-6 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 text-left",
           isPending
             ? "opacity-70 cursor-not-allowed border-muted bg-muted/20"
             : "cursor-pointer",
@@ -134,7 +145,6 @@ export default function FileDropzoneInput({
             ? "border-primary bg-primary/10 scale-[1.02]"
             : "border-muted hover:border-primary/50 hover:bg-muted/50",
         )}
-        aria-disabled={isPending}
         aria-label="Upload receipt or document"
       >
         {isPending ? (
@@ -162,7 +172,7 @@ export default function FileDropzoneInput({
             </div>
           </div>
         )}
-      </div>
+      </button>
     </div>
   );
 }
