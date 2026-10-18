@@ -30,7 +30,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { analyzeMarketWithAI } from "@/features/market/action";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type {
@@ -46,6 +45,7 @@ import {
   UI_CRYPTO_OPTIONS,
   UI_STOCK_OPTIONS,
 } from "@/constants/market-constant";
+import { analyzeMarketWithAI } from "@/features/market/ai-action";
 
 const STRATEGY_LABELS: Record<TradingStrategy, string> = {
   scalping: "Scalping",
@@ -154,7 +154,6 @@ export function AiPredictorCard({
               <Button
                 id="select-asset-predict"
                 variant="outline"
-                role="combobox"
                 aria-expanded={openSearch}
                 aria-controls="asset-predict-popover-list"
                 className="justify-between w-full px-3 text-xs font-semibold h-9"
@@ -169,6 +168,7 @@ export function AiPredictorCard({
             </PopoverTrigger>
 
             <PopoverContent
+              id="asset-predict-popover-list"
               className="w-(--radix-popover-trigger-width) min-w-70 p-2 overflow-hidden"
               align="start"
             >

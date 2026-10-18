@@ -44,6 +44,41 @@ interface CreateAssetTransactionProps {
   currency?: Currency;
 }
 
+interface AssetOption {
+  symbol: string;
+  name: string;
+}
+
+// Sub-komponen helper untuk item pilihan aset (mencegah duplikasi kode rendering)
+function AssetOptionItem({
+  asset,
+  isSelected,
+  onSelect,
+}: {
+  asset: AssetOption;
+  isSelected: boolean;
+  onSelect: (asset: AssetOption) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(asset)}
+      className={cn(
+        "w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center justify-between hover:bg-muted/50 transition-colors",
+        isSelected && "bg-primary/10 font-semibold text-primary",
+      )}
+    >
+      <div className="truncate pr-2">
+        <span>{asset.symbol}</span>
+        <span className="text-[10px] text-muted-foreground ml-2 truncate">
+          {asset.name}
+        </span>
+      </div>
+      {isSelected && <Check className="size-3 text-primary shrink-0" />}
+    </button>
+  );
+}
+
 export function CreateAssetTransaction({
   assetType,
   currency = "IDR",
@@ -76,7 +111,7 @@ export function CreateAssetTransaction({
       a.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleSelectAsset = (asset: { symbol: string; name: string }) => {
+  const handleSelectAsset = (asset: AssetOption) => {
     setSymbol(asset.symbol);
     setAssetName(asset.name);
     setOpenSearch(false);
@@ -128,7 +163,6 @@ export function CreateAssetTransaction({
         const msg =
           err instanceof Error ? err.message : "Gagal menyimpan transaksi.";
         setErrorMsg(msg);
-        // toast.error(msg);
       }
     });
   };
@@ -162,11 +196,11 @@ export function CreateAssetTransaction({
             <Button
               type="button"
               variant={transactionType === "buy" ? "default" : "outline"}
-              className={`h-9 text-xs font-semibold ${
-                transactionType === "buy"
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  : ""
-              }`}
+              className={cn(
+                "h-9 text-xs font-semibold",
+                transactionType === "buy" &&
+                  "bg-emerald-600 hover:bg-emerald-700 text-white",
+              )}
               onClick={() => setTransactionType("buy")}
             >
               BELI
@@ -174,11 +208,11 @@ export function CreateAssetTransaction({
             <Button
               type="button"
               variant={transactionType === "sell" ? "default" : "outline"}
-              className={`h-9 text-xs font-semibold ${
-                transactionType === "sell"
-                  ? "bg-rose-600 hover:bg-rose-700 text-white"
-                  : ""
-              }`}
+              className={cn(
+                "h-9 text-xs font-semibold",
+                transactionType === "sell" &&
+                  "bg-rose-600 hover:bg-rose-700 text-white",
+              )}
               onClick={() => setTransactionType("sell")}
             >
               JUAL
@@ -187,25 +221,28 @@ export function CreateAssetTransaction({
 
           {/* 2. Cari / Pilih Simbol Aset */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Aset</Label>
+            <Label htmlFor="create-tx-asset-btn" className="text-xs">
+              Aset
+            </Label>
             <Popover open={openSearch} onOpenChange={setOpenSearch}>
               <PopoverTrigger asChild>
                 <Button
-                  id="select-transaction-asset"
+                  id="create-tx-asset-btn"
                   variant="outline"
-                  role="combobox"
                   aria-expanded={openSearch}
-                  aria-controls="transaction-asset-popover-list"
+                  aria-controls="create-tx-asset-popover"
                   className="w-full justify-between h-9 text-xs font-semibold"
                 >
-                  {selectedAsset
-                    ? `${selectedAsset.symbol} (${selectedAsset.name})`
-                    : "Cari Aset..."}
+                  <span className="truncate">
+                    {selectedAsset
+                      ? `${selectedAsset.symbol} (${selectedAsset.name})`
+                      : "Cari Aset..."}
+                  </span>
                   <ChevronsUpDown className="ml-2 size-3 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                id="transaction-asset-popover-list"
+                id="create-tx-asset-popover"
                 className="w-93.75 p-2"
                 align="start"
               >
@@ -225,26 +262,12 @@ export function CreateAssetTransaction({
                     </p>
                   ) : (
                     filteredAssets.map((asset) => (
-                      <button
+                      <AssetOptionItem
                         key={asset.symbol}
-                        type="button"
-                        onClick={() => handleSelectAsset(asset)}
-                        className={cn(
-                          "w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center justify-between hover:bg-muted/50 transition-colors",
-                          symbol === asset.symbol &&
-                            "bg-primary/10 font-semibold text-primary",
-                        )}
-                      >
-                        <div>
-                          <span>{asset.symbol}</span>
-                          <span className="text-[10px] text-muted-foreground ml-2">
-                            {asset.name}
-                          </span>
-                        </div>
-                        {symbol === asset.symbol && (
-                          <Check className="size-3 text-primary" />
-                        )}
-                      </button>
+                        asset={asset}
+                        isSelected={symbol === asset.symbol}
+                        onSelect={handleSelectAsset}
+                      />
                     ))
                   )}
                 </div>
@@ -255,10 +278,11 @@ export function CreateAssetTransaction({
           {/* 3. Input Jumlah (Lot untuk Saham, Unit/Token untuk Kripto) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">
+              <Label htmlFor="tx-quantity-input" className="text-xs">
                 {assetType === "stocks" ? "Jumlah (Lot)" : "Jumlah Unit"}
               </Label>
               <Input
+                id="tx-quantity-input"
                 type="number"
                 step="any"
                 placeholder={assetType === "stocks" ? "Contoh: 10" : "0.05"}
@@ -275,10 +299,11 @@ export function CreateAssetTransaction({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">
+              <Label htmlFor="tx-price-input" className="text-xs">
                 Harga per {assetType === "stocks" ? "Lembar" : "Unit"}
               </Label>
               <Input
+                id="tx-price-input"
                 type="number"
                 step="any"
                 placeholder="0"
@@ -302,8 +327,11 @@ export function CreateAssetTransaction({
 
           {/* 5. Catatan Tambahan */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Catatan (Opsional)</Label>
+            <Label htmlFor="tx-notes-input" className="text-xs">
+              Catatan (Opsional)
+            </Label>
             <Input
+              id="tx-notes-input"
               placeholder="Contoh: Pembelian via Bibit / Indodax"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
