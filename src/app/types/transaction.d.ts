@@ -12,3 +12,13 @@ export type Transaction = {
   user_id: string | null;
   embedding: number[] | null;
 };
+
+export type PendingDeletion = Pick<
+  Transaction,
+  "id" | "date" | "description" | "category" | "amount" | "type"
+>;
+
+export type WizardResult = {
+  message: string;
+  pendingDeletions: PendingDeletion[];
+};

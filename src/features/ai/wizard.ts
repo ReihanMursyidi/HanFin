@@ -6,11 +6,9 @@ import {
   CATEGORIES,
   transactionSchema,
 } from "@/constants/transaction-constant";
-import {
-  createTransaction,
-  deleteTransaction,
-  updateTransaction,
-} from "../transaction/action";
+import type { PendingDeletion, WizardResult } from "@/app/types/transaction";
+import { createClient } from "@/lib/supabase/server";
+import { createTransaction, updateTransaction } from "../transaction/action";
 import { findEmbedding } from "./embedding";
 import {
   createTransactionDeclaration,
@@ -140,7 +138,8 @@ function buildInitialContents(
             <instruction>
               - Extract transaction intent from ${type === "text" ? "the provided text" : "the audio file"} in Bahasa Indonesia.
               - If the request is to update or delete a transaction, you MUST call 'get_transaction' first to find the target transaction ID and details.
-              - When updating a transaction, ensure all required fields match the schema.
+              - When updating a transaction, pass the id from 'get_transaction' and ONLY the fields that change; unchanged fields are kept automatically.
+              - To delete a transaction, call 'delete_transaction' (pass the id from 'get_transaction' when available). It does NOT delete immediately: the user must confirm on screen. In your final summary say that confirmation is pending and NEVER state that a transaction has been deleted.
               - Provide a concise final summary in Bahasa Indonesia once all function executions complete.
             </instruction>
             <context>
@@ -154,10 +153,63 @@ function buildInitialContents(
   ];
 }
 
+// 3a. Helper: Cari kandidat transaksi yang akan dihapus (TIDAK menghapus apa pun)
+const MAX_DELETE_CANDIDATES = 3;
+
+function toPendingDeletion(row: Record<string, unknown>): PendingDeletion {
+  return {
+    id: String(row.id),
+    type: row.type === "income" ? "income" : "expense",
+    category: String(row.category ?? "") as PendingDeletion["category"],
+    amount: Number(row.amount) || 0,
+    description: String(row.description ?? ""),
+    date: String(row.date ?? ""),
+  };
+}
+
+// Ambil satu transaksi persis berdasarkan ID.
+// RLS memastikan hanya transaksi milik user yang bisa ditemukan.
+async function getTransactionById(id: string): Promise<PendingDeletion | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, type, category, amount, description, date")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Gagal mencari transaksi: ${error.message}`);
+  }
+  return data ? toPendingDeletion(data) : null;
+}
+
+async function findDeletionCandidates(
+  args: Record<string, unknown>,
+): Promise<PendingDeletion[]> {
+  const { id, ...details } = args;
+
+  // Jika ID tersedia (hasil get_transaction), cari persis berdasarkan ID.
+  if (typeof id === "string" && id) {
+    const found = await getTransactionById(id);
+    if (found) return [found];
+  }
+
+  // Tanpa ID valid: pencarian semantik, tapi hanya sebagai kandidat
+  if (Object.keys(details).length === 0) return [];
+
+  const rows = await findEmbedding(
+    JSON.stringify(details),
+    0.3,
+    MAX_DELETE_CANDIDATES,
+  );
+  return (rows ?? []).map(toPendingDeletion);
+}
+
 // 3. Helper: Eksekusi Tool Call Berdasarkan Nama Fungsi
 async function executeToolCall(
   name: string,
   args: Record<string, unknown>,
+  pendingDeletions: PendingDeletion[],
 ): Promise<Record<string, unknown>> {
   switch (name) {
     case "get_transaction": {
@@ -178,28 +230,66 @@ async function executeToolCall(
     }
 
     case "delete_transaction": {
-      const data = await findEmbedding(JSON.stringify(args || {}), 0.3, 1);
-      if (!data || data.length === 0 || !data[0].id) {
+      // Penghapusan TIDAK dilakukan di sini. Kandidat dikembalikan ke UI
+      // dan baru dihapus setelah user menekan tombol konfirmasi.
+      const candidates = await findDeletionCandidates(args);
+      if (candidates.length === 0) {
         throw new Error("Transaksi yang ingin dihapus tidak ditemukan.");
       }
-      const targetId = String(data[0].id);
-      await deleteTransaction(targetId);
-      return { status: "success", deletedId: targetId };
+
+      for (const candidate of candidates) {
+        if (!pendingDeletions.some((p) => p.id === candidate.id)) {
+          pendingDeletions.push(candidate);
+        }
+      }
+
+      return {
+        status: "awaiting_user_confirmation",
+        message:
+          "Belum ada transaksi yang dihapus. User akan diminta konfirmasi di layar. Jangan menyatakan transaksi sudah dihapus.",
+        candidates,
+      };
     }
 
     case "update_transaction": {
-      if (!args || typeof args !== "object" || !("id" in args) || !args.id) {
+      const { id, ...changes } = args;
+      if (typeof id !== "string" || !id) {
         throw new Error("Transaction ID is required for update");
       }
-      const newData = transactionSchema.parse(args);
+
+      // Hanya field yang benar-benar diisi AI yang dianggap sebagai perubahan
+      const definedChanges = Object.fromEntries(
+        Object.entries(changes).filter(
+          ([, value]) => value !== undefined && value !== null && value !== "",
+        ),
+      );
+      if (Object.keys(definedChanges).length === 0) {
+        throw new Error("Tidak ada perubahan yang diminta untuk transaksi ini.");
+      }
+
+      const existing = await getTransactionById(id);
+      if (!existing) {
+        throw new Error("Transaksi yang ingin diubah tidak ditemukan.");
+      }
+
+      // Gabungkan data lama dengan perubahan agar update parsial tetap valid
+      const newData = transactionSchema.parse({
+        amount: existing.amount,
+        type: existing.type,
+        category: existing.category,
+        description: existing.description,
+        date: existing.date,
+        ...definedChanges,
+      });
       if (newData.amount <= 0) {
         throw new Error("Nominal transaksi harus lebih dari 0.");
       }
-      const targetId = String((args as { id: unknown }).id);
-      await updateTransaction(targetId, newData);
+
+      await updateTransaction(id, newData);
       return {
         status: "success",
-        updatedId: targetId,
+        updatedId: id,
+        updatedTransaction: newData,
       };
     }
 
@@ -209,10 +299,22 @@ async function executeToolCall(
 }
 
 // 2. HANDLE WIZARD TOOLS (Multi-turn Function Calling)
-export async function handleWizardTools(formData: FormData) {
+export async function handleWizardTools(
+  formData: FormData,
+): Promise<WizardResult> {
   const { type, request, mimeType, base64Data } =
     await parseWizardInput(formData);
   const contents = buildInitialContents(type, request, mimeType, base64Data);
+  const pendingDeletions: PendingDeletion[] = [];
+
+  const buildResult = (text?: string): WizardResult => ({
+    message:
+      text ||
+      (pendingDeletions.length > 0
+        ? "Konfirmasi diperlukan sebelum transaksi dihapus."
+        : "Proses selesai."),
+    pendingDeletions,
+  });
 
   const ai = createAI();
   const MAX_LOOPS = 5;
@@ -238,7 +340,7 @@ export async function handleWizardTools(formData: FormData) {
     const functionCalls = response.functionCalls;
 
     if (!functionCalls || functionCalls.length === 0) {
-      return response.text || "Proses selesai.";
+      return buildResult(response.text);
     }
 
     if (response.candidates?.[0]?.content) {
@@ -253,6 +355,7 @@ export async function handleWizardTools(formData: FormData) {
           resultData = await executeToolCall(
             callName,
             (args as Record<string, unknown>) || {},
+            pendingDeletions,
           );
         } catch (err) {
           resultData = {
@@ -277,5 +380,5 @@ export async function handleWizardTools(formData: FormData) {
     });
   }
 
-  return "Proses selesai.";
+  return buildResult();
 }

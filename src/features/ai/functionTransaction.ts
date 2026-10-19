@@ -55,7 +55,7 @@ export const createTransactionDeclaration: FunctionDeclaration = {
 export const deleteTransactionDeclaration: FunctionDeclaration = {
   name: "delete_transaction",
   description:
-    "Delete an existing transaction from user's financial history based on the provided data.",
+    "Find the transaction(s) the user wants to delete. This does NOT delete anything: it asks the user to confirm on screen. Pass the transaction id if known (from get_transaction), otherwise the known details.",
   parameters: {
     type: Type.OBJECT,
     properties: transactionProperties,
@@ -65,7 +65,7 @@ export const deleteTransactionDeclaration: FunctionDeclaration = {
 export const updateTransactionDeclaration: FunctionDeclaration = {
   name: "update_transaction",
   description:
-    "Update an existing transaction from user's financial history based on the provided data.",
+    "Update an existing transaction from user's financial history. Pass the transaction id and only the fields that should change; omitted fields keep their current value.",
   parameters: {
     type: Type.OBJECT,
     properties: transactionProperties,
