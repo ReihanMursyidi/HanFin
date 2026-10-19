@@ -4,107 +4,254 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Type } from "@google/genai";
-import type { Transaction } from "@/app/types/transaction";
-import { findEmbedding } from "./embedding";
+import { z } from "zod";
+import { CATEGORIES } from "@/constants/transaction-constant";
+import { createClient } from "@/lib/supabase/server";
 import { createAI } from "./instance";
 
-// HELPER: Ekstraksi Context Data
-async function getTransactionContext(request: string): Promise<string> {
-  const data = await findEmbedding(request, 0.5, 50);
+// KONFIGURASI
+const ANALYSIS_MODEL = "gemini-3.6-flash";
+const PAGE_SIZE = 1000; // batas default baris per request PostgREST
+const MAX_ROWS = 5000; // batas pengaman jumlah baris yang dihitung
+const MAX_GROUPS = 10; // maksimal grup pada chart non-waktu
+const MAX_TIME_BUCKETS = { month: 24, day: 31 } as const;
 
-  if (!data || data.length === 0) {
-    return "No transactions found that are similar or relevant to the request";
-  }
+// 1. PARSING PERMINTAAN -> PARAMETER QUERY TERSTRUKTUR
+// AI hanya menerjemahkan permintaan menjadi filter. Seluruh angka dihitung
+// dari database, bukan oleh AI, sehingga hasilnya akurat dan lengkap.
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const optionalDate = z.string().regex(DATE_PATTERN).or(z.literal(""));
 
-  return data
-    .map((transaction: Transaction) => JSON.stringify(transaction))
-    .join("\n");
-}
+const analysisSchema = z.object({
+  chartType: z.enum(["bar", "pie"]),
+  groupBy: z.enum(["category", "month", "day", "type"]),
+  type: z.enum(["income", "expense", "all"]),
+  dateFrom: optionalDate,
+  dateTo: optionalDate,
+  categories: z.array(z.enum(CATEGORIES)),
+});
 
-// 1. GENERATE CHART
-export async function generateChart(request: string) {
+type Analysis = z.infer<typeof analysisSchema>;
+type Bucket = { name: string; value: number };
+type TransactionRow = {
+  amount: number | string;
+  type: string;
+  category: string;
+  date: string;
+};
+
+async function parseAnalysisRequest(request: string): Promise<Analysis> {
   const ai = createAI();
-  const contextData = await getTransactionContext(request);
-
-  const contents = {
-    role: "user",
-    parts: [
-      {
-        text: `
-          <role>
-            You are an AI Financial Analyst and data engineering specialist. Your task is to analyze transactions 
-            in <context> and generate a structured JSON configuration to render charts that directly respond to the user's request.
-          </role>
-          <input>
-            User request: "${request}"
-          </input>
-          <instruction>
-            1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
-            2. Grouping and Summarization:
-              - If the query is about expense type, group by category name.
-              - If it's about time trend, group by date, day, or month.
-              - If it's comparing income and expenses, group by type.
-              - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Other" if necessary.
-            3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
-            4. Chart Type Selection:
-              - Use 'chartType: "pie"' if the user asks for proportions, ratios, percentages, or category composition.
-              - Use 'chartType: "bar"' if the user asks for comparison, over-time trends, chronological analysis, or comparing individual entities.
-          </instruction>
-          <context>
-            Current Date : ${new Date().toISOString()}
-            Data transaction: ${contextData}
-          </context>
-          <constraints>
-            - Respond strictly with a raw and valid JSON object matching the requested schema.
-            - DO NOT include markdown code blocks, backticks, or any conversational text.
-          </constraints>
-        `,
-      },
-    ],
-  };
+  const today = new Date().toISOString().slice(0, 10);
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.6-flash",
-    contents,
+    model: ANALYSIS_MODEL,
+    contents: `
+      <role>
+        You convert a user's request about their personal finances into structured query parameters.
+        Do NOT answer the request and do NOT compute any numbers.
+      </role>
+      <input>
+        User request: "${request}"
+      </input>
+      <rules>
+        - groupBy: "category" for spending/income per category or composition; "month" for monthly trends;
+          "day" for daily trends; "type" to compare income against expenses.
+        - type: "expense" for spending, "income" for earnings. Use "all" ONLY together with groupBy "type".
+          If unclear, use "expense".
+        - dateFrom / dateTo: YYYY-MM-DD resolved from Current Date (e.g. "6 bulan terakhir" = 6 months before
+          today until today). Use an empty string when the request names no period.
+        - categories: only when the request names specific categories, chosen from [${CATEGORIES.join(", ")}]. Otherwise [].
+        - chartType: "pie" for proportions, ratios or composition; "bar" for comparisons and time trends.
+          Time-based groupBy ("month", "day") must use "bar".
+      </rules>
+      <context>
+        Current Date: ${today}
+      </context>
+    `,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          chartType: {
+          chartType: { type: Type.STRING, enum: ["bar", "pie"] },
+          groupBy: {
             type: Type.STRING,
-            enum: ["bar", "pie"],
-            description: "Chart type to render",
+            enum: ["category", "month", "day", "type"],
           },
-          data: {
+          type: { type: Type.STRING, enum: ["income", "expense", "all"] },
+          dateFrom: { type: Type.STRING },
+          dateTo: { type: Type.STRING },
+          categories: {
             type: Type.ARRAY,
-            description: "Array of objects for data chart",
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                value: { type: Type.NUMBER },
-              },
-              required: ["name", "value"],
-            },
+            items: { type: Type.STRING, enum: [...CATEGORIES] },
           },
         },
-        required: ["chartType", "data"],
+        required: [
+          "chartType",
+          "groupBy",
+          "type",
+          "dateFrom",
+          "dateTo",
+          "categories",
+        ],
       },
     },
   });
 
   if (!response.text) {
-    throw new Error("Failed to generate chart configuration");
+    throw new Error("Failed to understand the request");
   }
 
-  return JSON.parse(response.text);
+  const analysis = analysisSchema.parse(JSON.parse(response.text));
+
+  // Normalisasi kombinasi yang tidak bermakna
+  if (analysis.type === "all" && analysis.groupBy !== "type") {
+    analysis.type = "expense";
+  }
+  if (analysis.groupBy === "month" || analysis.groupBy === "day") {
+    analysis.chartType = "bar";
+  }
+
+  return analysis;
+}
+
+// 2. AMBIL DATA LANGSUNG DARI DATABASE (RLS membatasi ke milik user)
+async function fetchTransactions(
+  analysis: Analysis,
+): Promise<TransactionRow[]> {
+  const supabase = await createClient();
+  const rows: TransactionRow[] = [];
+
+  for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+    let query = supabase
+      .from("transactions")
+      .select("amount, type, category, date")
+      .order("date", { ascending: false })
+      .order("id", { ascending: true });
+
+    if (analysis.type !== "all") query = query.eq("type", analysis.type);
+    if (analysis.dateFrom) query = query.gte("date", analysis.dateFrom);
+    if (analysis.dateTo) query = query.lte("date", analysis.dateTo);
+    if (analysis.categories.length > 0) {
+      query = query.in("category", analysis.categories);
+    }
+
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw new Error(`Failed to fetch transactions: ${error.message}`);
+    }
+
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
+
+  console.warn(
+    `[Generative Content]: Data dibatasi ${MAX_ROWS} transaksi terbaru.`,
+  );
+  return rows;
+}
+
+// 3. AGREGASI DETERMINISTIK
+function aggregate(rows: TransactionRow[], analysis: Analysis): Bucket[] {
+  const totals = new Map<string, number>();
+
+  for (const row of rows) {
+    const amount = Number(row.amount) || 0;
+    const date = String(row.date);
+
+    let key: string;
+    switch (analysis.groupBy) {
+      case "category":
+        key = row.category;
+        break;
+      case "month":
+        key = date.slice(0, 7);
+        break;
+      case "day":
+        key = date;
+        break;
+      default:
+        key = row.type === "income" ? "Income" : "Expense";
+    }
+
+    totals.set(key, (totals.get(key) ?? 0) + amount);
+  }
+
+  const buckets: Bucket[] = [...totals].map(([name, value]) => ({
+    name,
+    value: Math.round(value * 100) / 100,
+  }));
+
+  // Data waktu: urut kronologis, ambil periode terbaru
+  if (analysis.groupBy === "month" || analysis.groupBy === "day") {
+    return buckets
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(-MAX_TIME_BUCKETS[analysis.groupBy]);
+  }
+
+  // Data non-waktu: urut nilai terbesar, sisanya digabung ke "Others"
+  buckets.sort((a, b) => b.value - a.value);
+  if (buckets.length <= MAX_GROUPS) return buckets;
+
+  const top = buckets.slice(0, MAX_GROUPS - 1);
+  const others = buckets
+    .slice(MAX_GROUPS - 1)
+    .reduce((sum, bucket) => sum + bucket.value, 0);
+  return [...top, { name: "Others", value: Math.round(others * 100) / 100 }];
+}
+
+async function buildAnalytics(request: string) {
+  const analysis = await parseAnalysisRequest(request);
+  const rows = await fetchTransactions(analysis);
+
+  if (rows.length === 0) {
+    throw new Error("Tidak ada transaksi yang cocok dengan permintaanmu.");
+  }
+
+  const buckets = aggregate(rows, analysis);
+  return { analysis, transactionCount: rows.length, buckets };
+}
+
+// Ringkasan angka yang sudah dihitung untuk prompt gambar/video
+function describeAnalytics({
+  analysis,
+  transactionCount,
+  buckets,
+}: Awaited<ReturnType<typeof buildAnalytics>>): string {
+  return JSON.stringify(
+    {
+      filters: {
+        type: analysis.type,
+        from: analysis.dateFrom || null,
+        to: analysis.dateTo || null,
+        categories: analysis.categories,
+      },
+      groupedBy: analysis.groupBy,
+      currency: "IDR",
+      transactionCount,
+      total: buckets.reduce((sum, bucket) => sum + bucket.value, 0),
+      groups: buckets,
+    },
+    null,
+    2,
+  );
+}
+
+// 1. GENERATE CHART
+export async function generateChart(request: string) {
+  const { analysis, buckets } = await buildAnalytics(request);
+
+  return {
+    chartType: analysis.chartType,
+    data: buckets,
+  };
 }
 
 // 2. GENERATE IMAGE
 export async function generateImage(request: string) {
   const ai = createAI();
-  const contextData = await getTransactionContext(request);
+  const analytics = await buildAnalytics(request);
 
   const contents = {
     role: "user",
@@ -112,25 +259,20 @@ export async function generateImage(request: string) {
       {
         text: `
           <role>
-            You are an AI Financial Analyst and Data illustrator. Your task is to analyze transactions in <context> 
-            and generate an image for an infographic and conceptual dashboard in bento grid style that directly responds to the user's request.
+            You are an AI Financial Analyst and Data illustrator. Your task is to turn the aggregated data in <context>
+            into an image for an infographic and conceptual dashboard in bento grid style that directly responds to the user's request.
           </role>
           <input>
             User request: "${request}"
           </input>
           <instruction>
-            1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
-            2. Grouping & Summarization: 
-              - If the query is about expense type, group by category name.
-              - If it's about time trend, group by date, day, or month.
-              - If it's comparing income and expenses, group by type.
-              - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Others" if necessary.
-            3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
-            4. Create a visually outstanding bento-style design.
+            1. The data in <context> is ALREADY filtered and aggregated. Use these exact numbers and do NOT recalculate or invent values.
+            2. Visualize the groups so the key insight of the user's request is clear.
+            3. Create a visually outstanding bento-style design.
           </instruction>
           <context>
             Current Date : ${new Date().toISOString()}
-            Data transaction : ${contextData}
+            Aggregated data : ${describeAnalytics(analytics)}
           </context>
         `,
       },
@@ -177,30 +319,25 @@ export async function generateImage(request: string) {
 // 3. GENERATE VIDEO
 export async function generateVideo(request: string) {
   const ai = createAI();
-  const contextData = await getTransactionContext(request);
+  const analytics = await buildAnalytics(request);
 
   const contents = `
       <role>
-        You are an AI Financial Analyst and motion designer. Your task is to analyze transactions in <context> 
-        and generate a video for an infographic and conceptual dashboard in bento grid style that directly responds to the user's request.
+        You are an AI Financial Analyst and motion designer. Your task is to turn the aggregated data in <context>
+        into a video for an infographic and conceptual dashboard in bento grid style that directly responds to the user's request.
       </role>
       <input>
         User request: "${request}"
       </input>
       <instruction>
-        1. Analyze and filter: read the user's request and extract only the relevant transactions from the provided <context>.
-        2. Grouping & Summarization: 
-          - If the query is about expense type, group by category name.
-          - If it's about time trend, group by date, day, or month.
-          - If it's comparing income and expenses, group by type.
-          - Limit the data to the top 10 most significant groups to ensure the chart is clean on the dashboard, group smaller items into "Others" if necessary.
-        3. Values & Calculations: Ensure all currency values are aggregated correctly. Use positive numbers for visual chart representation.
-        4. Create an outstanding video with a bento-style design.
-        5. Maximum video duration is 10 seconds.
+        1. The data in <context> is ALREADY filtered and aggregated. Use these exact numbers and do NOT recalculate or invent values.
+        2. Animate the groups so the key insight of the user's request is clear.
+        3. Create an outstanding video with a bento-style design.
+        4. Maximum video duration is 10 seconds.
       </instruction>
       <context>
         Current Date : ${new Date().toISOString()}
-        Data transaction : ${contextData}
+        Aggregated data : ${describeAnalytics(analytics)}
       </context>
   `;
 
