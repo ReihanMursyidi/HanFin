@@ -5,6 +5,7 @@ import type { Transaction } from "@/app/types/transaction";
 import { createClient } from "@/lib/supabase/server";
 import { transactionSchema } from "@/constants/transaction-constant";
 import { generateEmbedding } from "../ai/embedding";
+import { buildEmbeddingText } from "../ai/embedding-text";
 
 // TRANSACTIONS: READ
 export async function getBalanceSummary() {
@@ -65,18 +66,34 @@ export async function getTransactions(params?: {
 }
 
 // EMBEDDING UTILITY
+const EMBEDDING_RETRIES = 1;
+const EMBEDDING_RETRY_DELAY_MS = 500;
+
+// Mengembalikan null jika tetap gagal setelah retry. Transaksi tetap
+// disimpan; embedding yang hilang akan diisi ulang otomatis (backfill)
+// saat AI mencari transaksi.
 async function handleEmbedding(
   transaction: Omit<Transaction, "id" | "user_id" | "embedding">,
-) {
-  const embeddingText = JSON.stringify({
-    amount: transaction.amount,
-    type: transaction.type,
-    category: transaction.category,
-    description: transaction.description,
-    date: transaction.date,
-  });
+): Promise<number[] | null> {
+  const embeddingText = buildEmbeddingText(transaction);
 
-  return await generateEmbedding(embeddingText);
+  for (let attempt = 0; attempt <= EMBEDDING_RETRIES; attempt++) {
+    try {
+      return await generateEmbedding(embeddingText);
+    } catch (error) {
+      console.error(
+        `[Embedding Warning]: Attempt ${attempt + 1} failed:`,
+        error,
+      );
+      if (attempt < EMBEDDING_RETRIES) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, EMBEDDING_RETRY_DELAY_MS),
+        );
+      }
+    }
+  }
+
+  return null;
 }
 
 // TRANSACTIONS: WRITE (CUD)
@@ -88,13 +105,10 @@ export async function createTransaction(
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...transaction };
 
-  try {
-    const embeddingVector = await handleEmbedding(transaction);
-    if (embeddingVector) {
-      payload.embedding = embeddingVector;
-    }
-  } catch (error) {
-    console.error("[Embedding Warning]: Failed to generate embedding:", error);
+  // Jika gagal, kolom embedding dibiarkan kosong untuk di-backfill nanti
+  const embeddingVector = await handleEmbedding(transaction);
+  if (embeddingVector) {
+    payload.embedding = embeddingVector;
   }
 
   const { data, error } = await supabase
@@ -120,14 +134,10 @@ export async function updateTransaction(
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...transaction };
 
-  try {
-    const embeddingVector = await handleEmbedding(transaction);
-    if (embeddingVector) {
-      payload.embedding = embeddingVector;
-    }
-  } catch (error) {
-    console.error("[Embedding Warning]: Failed to generate embedding:", error);
-  }
+  // Jika gagal, embedding lama DIKOSONGKAN (bukan dibiarkan), karena embedding
+  // lama menggambarkan data lama dan akan menghasilkan pencarian yang salah.
+  // Kolom yang kosong akan di-backfill otomatis saat AI mencari transaksi.
+  payload.embedding = await handleEmbedding(transaction);
 
   const { data, error } = await supabase
     .from("transactions")

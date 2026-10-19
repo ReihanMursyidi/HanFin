@@ -1,6 +1,8 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { buildEmbeddingText } from "./embedding-text";
 import { createAI } from "./instance";
 
 export async function generateEmbedding(contents: string): Promise<number[]> {
@@ -33,6 +35,43 @@ export async function generateEmbedding(contents: string): Promise<number[]> {
   }
 }
 
+const BACKFILL_LIMIT = 20;
+
+// Mengisi embedding transaksi milik user yang masih kosong (misalnya karena
+// API embedding sempat gagal saat transaksi dibuat/diubah). Kegagalan di sini
+// tidak boleh menghentikan pencarian, jadi semua error hanya dicatat.
+async function backfillMissingEmbeddings(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  try {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, amount, type, category, description, date")
+      .eq("user_id", userId)
+      .is("embedding", null)
+      .limit(BACKFILL_LIMIT);
+
+    if (error || !data || data.length === 0) return;
+
+    await Promise.all(
+      data.map(async (row) => {
+        try {
+          const embedding = await generateEmbedding(buildEmbeddingText(row));
+          await supabase
+            .from("transactions")
+            .update({ embedding })
+            .eq("id", row.id);
+        } catch (err) {
+          console.error("[Embedding Backfill Error]:", row.id, err);
+        }
+      }),
+    );
+  } catch (err) {
+    console.error("[Embedding Backfill Error]:", err);
+  }
+}
+
 export async function findEmbedding(
   query: string,
   match_threshold = 0.3,
@@ -46,6 +85,8 @@ export async function findEmbedding(
   if (!user) {
     throw new Error("Unauthorized: Harus login untuk mencari transaksi.");
   }
+
+  await backfillMissingEmbeddings(supabase, user.id);
 
   const queryEmbedding = await generateEmbedding(query);
 
