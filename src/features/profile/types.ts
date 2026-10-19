@@ -1,4 +1,3 @@
-// Define interface khusus untuk data profil
 export interface FinancialProfileData {
   id?: string;
   currency?: string;
