@@ -19,94 +19,6 @@ import { createClient } from "@/lib/supabase/server";
 import { convertCurrency } from "@/lib/format";
 import { createMarketTransactionSchema } from "@/constants/market-constant";
 
-// SYNC / RECALCULATE PORTFOLIO ASSET
-export async function syncPortfolioAsset(
-  userId: string,
-  symbol: string,
-  assetType: AssetType,
-) {
-  const supabase = await createClient();
-
-  const { data: transactions, error } = await supabase
-    .from("market_transactions")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("symbol", symbol.toUpperCase())
-    .order("transaction_date", { ascending: true });
-
-  if (error) {
-    throw new Error(`Gagal mengambil data riwayat transaksi: ${error.message}`);
-  }
-
-  if (!transactions || transactions.length === 0) {
-    await supabase
-      .from("portfolio_assets")
-      .delete()
-      .eq("user_id", userId)
-      .eq("symbol", symbol.toUpperCase());
-    return;
-  }
-
-  let totalQuantity = 0;
-  let totalCost = 0;
-
-  for (const tx of transactions) {
-    const qty = Number(tx.quantity);
-    const price = Number(tx.price_per_unit);
-
-    if (tx.transaction_type === "buy") {
-      totalQuantity += qty;
-      totalCost += qty * price;
-    } else if (tx.transaction_type === "sell") {
-      if (totalQuantity > 0) {
-        const currentAvgPrice = totalCost / totalQuantity;
-
-        // 👈 CEGAH KUANTITAS MINUS: Batasi pengurangan maksimal sebesar totalQuantity yang ada
-        const actualSellQty = Math.min(qty, totalQuantity);
-
-        totalQuantity -= actualSellQty;
-        totalCost -= actualSellQty * currentAvgPrice;
-
-        // Reset modal jika sisa aset habis
-        if (totalQuantity <= 0) {
-          totalQuantity = 0;
-          totalCost = 0;
-        }
-      }
-    }
-  }
-
-  if (totalQuantity <= 0) {
-    await supabase
-      .from("portfolio_assets")
-      .delete()
-      .eq("user_id", userId)
-      .eq("symbol", symbol.toUpperCase());
-    return;
-  }
-
-  const avgBuyPrice = totalCost / totalQuantity;
-
-  // UPSERT DATA
-  const { error: upsertError } = await supabase.from("portfolio_assets").upsert(
-    {
-      user_id: userId,
-      symbol: symbol.toUpperCase(),
-      name: transactions[0].asset_name,
-      asset_type: assetType,
-      total_quantity: totalQuantity,
-      avg_buy_price: avgBuyPrice,
-      currency: transactions[0].currency,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,symbol" },
-  );
-
-  if (upsertError) {
-    throw new Error(`Gagal menyimpan portofolio: ${upsertError.message}`);
-  }
-}
-
 // Server Action untuk mengambil data candlestick berdasarkan timeframe
 export async function getMarketChartData(
   symbol: string,
@@ -139,6 +51,8 @@ export async function getMarketChartData(
 }
 
 // ==== TRANSAKSI: CREATE (BUY / SELL) ====
+// Validasi kepemilikan, insert transaksi, dan sinkron portofolio dilakukan
+// atomik di database (fungsi create_market_transaction, migrasi 7).
 export async function createMarketTransaction(rawInput: unknown) {
   const supabase = await createClient();
 
@@ -150,71 +64,31 @@ export async function createMarketTransaction(rawInput: unknown) {
 
   const input = createMarketTransactionSchema.parse(rawInput);
 
-  // VALIDASI TRANSAKSI JUAL
-  if (input.transaction_type === "sell") {
-    const { data: existingAsset } = await supabase
-      .from("portfolio_assets")
-      .select("total_quantity")
-      .eq("user_id", user.id)
-      .eq("symbol", input.symbol.toUpperCase())
-      .single();
-
-    const currentOwnedQuantity = existingAsset
-      ? Number(existingAsset.total_quantity)
-      : 0;
-
-    if (currentOwnedQuantity <= 0) {
-      throw new Error(
-        `Anda belum memiliki aset ${input.symbol}. Tambahkan transaksi Beli terlebih dahulu sebelum menjual.`,
-      );
-    }
-
-    if (input.quantity > currentOwnedQuantity) {
-      throw new Error(
-        `Jumlah penjualan (${input.quantity}) melebihi total aset ${input.symbol} yang Anda miliki (${currentOwnedQuantity}).`,
-      );
-    }
-  }
-
-  const payload = {
-    user_id: user.id,
-    symbol: input.symbol.toUpperCase(),
-    asset_name: input.asset_name,
-    asset_type: input.asset_type,
-    transaction_type: input.transaction_type,
-    quantity: input.quantity,
-    price_per_unit: input.price_per_unit,
-    total_amount: input.total_amount,
-    currency: input.currency,
-    notes: input.notes || null,
-  };
-
-  // 1. Simpan ke database
-  const { data, error } = await supabase
-    .from("market_transactions")
-    .insert(payload)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("create_market_transaction", {
+    p_symbol: input.symbol,
+    p_asset_name: input.asset_name,
+    p_asset_type: input.asset_type,
+    p_transaction_type: input.transaction_type,
+    p_quantity: input.quantity,
+    p_price_per_unit: input.price_per_unit,
+    p_total_amount: input.total_amount,
+    p_currency: input.currency,
+    p_notes: input.notes || null,
+    p_transaction_date: input.transaction_date ?? null,
+  });
 
   if (error) {
-    throw new Error(`Gagal mencatat transaksi: ${error.message}`);
-  }
-
-  // 2. Sinkronkan ke portfolio_assets
-  try {
-    await syncPortfolioAsset(user.id, input.symbol, input.asset_type);
-  } catch (syncError) {
-    await supabase.from("market_transactions").delete().eq("id", data.id);
-    throw syncError;
+    throw new Error(error.message);
   }
 
   revalidatePath("/home/financial-market/stocks");
   revalidatePath("/home/financial-market/crypto");
 
-  return data;
+  return data as MarketTransaction;
 }
 
 // ==== TRANSAKSI: DELETE ====
+// Hapus transaksi dan hitung ulang portofolio secara atomik di database.
 export async function deleteMarketTransaction(id: string) {
   const supabase = await createClient();
 
@@ -224,34 +98,12 @@ export async function deleteMarketTransaction(id: string) {
 
   if (!user) throw new Error("Unauthorized");
 
-  // Ambil data transaksi sebelum dihapus untuk mengetahui simbol & asset_type
-  const { data: tx, error: fetchError } = await supabase
-    .from("market_transactions")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+  const { error } = await supabase.rpc("delete_market_transaction", {
+    p_id: id,
+  });
 
-  if (fetchError || !tx) {
-    throw new Error("Transaksi tidak ditemukan.");
-  }
-
-  const { error: deleteError } = await supabase
-    .from("market_transactions")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (deleteError) {
-    throw new Error(`Failed to delete transaction: ${deleteError.message}`);
-  }
-
-  // Hitung ulang portofolio untuk simbol yang bersangkutan
-  try {
-    await syncPortfolioAsset(user.id, tx.symbol, tx.asset_type as AssetType);
-  } catch (syncError) {
-    await supabase.from("market_transactions").insert(tx);
-    throw syncError;
+  if (error) {
+    throw new Error(error.message);
   }
 
   revalidatePath("/home/financial-market/stocks");
