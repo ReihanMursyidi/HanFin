@@ -56,7 +56,8 @@ export async function getTransactions(params?: {
 
   if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
-  const totalData = count || 0;
+  // count null hanya jika query gagal di luar error Supabase; anggap 0 hasil.
+  const totalData = count ?? 0;
 
   return {
     data,

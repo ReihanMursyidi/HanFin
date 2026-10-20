@@ -79,6 +79,30 @@ function AssetOptionItem({
   );
 }
 
+// Sub-komponen helper untuk tombol toggle Beli/Jual (mencegah duplikasi kode)
+function TransactionTypeButton({
+  isActive,
+  label,
+  activeClass,
+  onClick,
+}: {
+  isActive: boolean;
+  label: string;
+  activeClass: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={isActive ? "default" : "outline"}
+      className={cn("h-9 text-xs font-semibold", isActive && activeClass)}
+      onClick={onClick}
+    >
+      {label}
+    </Button>
+  );
+}
+
 export function CreateAssetTransaction({
   assetType,
   currency = "IDR",
@@ -193,30 +217,18 @@ export function CreateAssetTransaction({
 
           {/* 1. Tipe Transaksi (Beli / Jual) */}
           <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={transactionType === "buy" ? "default" : "outline"}
-              className={cn(
-                "h-9 text-xs font-semibold",
-                transactionType === "buy" &&
-                  "bg-emerald-600 hover:bg-emerald-700 text-white",
-              )}
+            <TransactionTypeButton
+              isActive={transactionType === "buy"}
+              label="BELI"
+              activeClass="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => setTransactionType("buy")}
-            >
-              BELI
-            </Button>
-            <Button
-              type="button"
-              variant={transactionType === "sell" ? "default" : "outline"}
-              className={cn(
-                "h-9 text-xs font-semibold",
-                transactionType === "sell" &&
-                  "bg-rose-600 hover:bg-rose-700 text-white",
-              )}
+            />
+            <TransactionTypeButton
+              isActive={transactionType === "sell"}
+              label="JUAL"
+              activeClass="bg-rose-600 hover:bg-rose-700 text-white"
               onClick={() => setTransactionType("sell")}
-            >
-              JUAL
-            </Button>
+            />
           </div>
 
           {/* 2. Cari / Pilih Simbol Aset */}

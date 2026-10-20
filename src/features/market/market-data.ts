@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { MarketAsset, OHLCData } from "./types";
 import YahooFinance from "yahoo-finance2";
 import {
+  BINANCE_ENDPOINTS,
   CRYPTO_ASSETS,
   FALLBACK_USD_IDR_RATE,
   STOCK_ASSETS,
@@ -12,13 +13,6 @@ import {
 const yahooFinance = new YahooFinance({
   suppressNotices: ["ripHistorical", "yahooSurvey"],
 });
-
-const BINANCE_ENDPOINTS = [
-  "https://data-api.binance.vision",
-  "https://api1.binance.com",
-  "https://api3.binance.com",
-  "https://api.binance.com",
-];
 
 async function fetchBinancePublic<T>(path: string): Promise<T> {
   for (const baseUrl of BINANCE_ENDPOINTS) {
@@ -211,20 +205,12 @@ export async function getStockChartData(
   try {
     const yahooSymbol = symbol === "IHSG" ? "^JKSE" : `${symbol}.JK`;
 
-    const chartResult = (await yahooFinance.chart(yahooSymbol, {
+    const chartResult = await yahooFinance.chart(yahooSymbol, {
       period1: new Date(period1),
       period2: new Date(),
       interval,
-    })) as unknown as {
-      quotes: Array<{
-        date: Date;
-        open: number | null;
-        high: number | null;
-        low: number | null;
-        close: number | null;
-        volume: number | null;
-      }>;
-    };
+      return: "array",
+    });
 
     const quotes = chartResult.quotes || [];
 

@@ -80,6 +80,16 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
   },
 ];
 
+// Endpoint publik Binance untuk fetch data kripto (failover antar mirror).
+// Bukan URL deployment-specific (stabil & publik), jadi ditaruh di konstanta,
+// bukan env var.
+export const BINANCE_ENDPOINTS = [
+  "https://data-api.binance.vision",
+  "https://api1.binance.com",
+  "https://api3.binance.com",
+  "https://api.binance.com",
+] as const;
+
 export const UI_STOCK_OPTIONS = STOCK_ASSETS.map((s) => ({
   symbol: s.shortSymbol,
   name: s.name,

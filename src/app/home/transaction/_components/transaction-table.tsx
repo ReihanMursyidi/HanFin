@@ -1,4 +1,4 @@
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, PlusIcon, Trash2Icon, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Fragment } from "react/jsx-runtime";
 
@@ -76,6 +76,31 @@ interface TransactionTableRowProps {
   onSelectTransaction: (state: SelectedTransactionState) => void;
 }
 
+// Sub-komponen helper untuk tombol aksi baris (mencegah duplikasi kode)
+function RowActionButton({
+  icon: Icon,
+  label,
+  hoverClass,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  hoverClass: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={label}
+      className={cn("size-8 text-muted-foreground", hoverClass)}
+      onClick={onClick}
+    >
+      <Icon className="size-4" />
+    </Button>
+  );
+}
+
 // 2. SUB-COMPONENT HELPER UNTUK BARIS TABEL
 function TransactionTableRow({
   transaction,
@@ -116,34 +141,28 @@ function TransactionTableRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Edit transaction"
-            className="size-8 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
+          <RowActionButton
+            icon={PencilIcon}
+            label="Edit transaction"
+            hoverClass="hover:text-yellow-500 hover:bg-yellow-500/10"
             onClick={() =>
               onSelectTransaction({
                 data: transaction,
                 action: "update",
               })
             }
-          >
-            <PencilIcon className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Delete transaction"
-            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          />
+          <RowActionButton
+            icon={Trash2Icon}
+            label="Delete transaction"
+            hoverClass="hover:text-destructive hover:bg-destructive/10"
             onClick={() =>
               onSelectTransaction({
                 data: transaction,
                 action: "delete",
               })
             }
-          >
-            <Trash2Icon className="size-4" />
-          </Button>
+          />
         </div>
       </TableCell>
     </TableRow>

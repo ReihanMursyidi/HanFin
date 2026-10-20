@@ -1,6 +1,6 @@
-import type { CATEGORIES } from "@/constants/transaction-constant";
+import type { Category } from "@/constants/transaction-constant";
 
-export type Category = (typeof CATEGORIES)[number];
+export type { Category };
 
 export type Transaction = {
   id: string;
