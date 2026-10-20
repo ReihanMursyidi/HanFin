@@ -16,7 +16,7 @@ export default function HomeLayout({ children }: { children: ReactNode }) {
 
         <AppSidebar />
 
-        <ScrollArea className="flex-1 min-w-0 h-svh bg-background [&>div]:block!">
+        <ScrollArea className="flex-1 min-w-0 h-svh bg-background [&>div]:block! [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:min-w-0!">
           <main className="p-4 md:p-6 lg:p-8 pb-20 md:pb-24 min-w-0">
             <SidebarTrigger className="mb-4 md:hidden" />
             {children}

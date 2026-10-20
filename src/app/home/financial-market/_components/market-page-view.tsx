@@ -50,7 +50,7 @@ export function MarketPageView({
   return (
     // Cukup gunakan space-y-6 dan min-w-0, sepenuhnya mengandalkan layout terpusat
 
-    <div className="w-9/10 sm:w-full space-y-6 max-w-dvw">
+    <div className="w-full max-w-full min-w-0 space-y-6">
       {/* Header Slot */}
 
       {header}
