@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ENVIRONMENT } from "@/config/environment";
 
 // 1. DAFTAR ASET & OPTIONS UI
 export interface AssetConfig {
@@ -123,6 +124,24 @@ export function getAssetLogoUrl(symbol: string, assetType: string): string {
 export const ASSET_TYPES = ["stocks", "crypto"] as const;
 export const TRANSACTION_TYPES = ["buy", "sell"] as const;
 export const CURRENCIES = ["IDR", "USD"] as const;
+
+// Satu-satunya kurs cadangan USD -> IDR. Dipakai jika kurs live (Yahoo
+// Finance) gagal diambil, dan sebagai default convertCurrency.
+// Atur lewat NEXT_PUBLIC_FALLBACK_USD_IDR_RATE di .env.local (dan di
+// pengaturan environment hosting). Jika kosong atau tidak valid, dipakai
+// nilai bawaan di bawah ini.
+const DEFAULT_FALLBACK_USD_IDR_RATE = 17257;
+
+function parseFallbackRate(raw: string | undefined): number {
+  const rate = Number(raw);
+  return Number.isFinite(rate) && rate > 0
+    ? rate
+    : DEFAULT_FALLBACK_USD_IDR_RATE;
+}
+
+export const FALLBACK_USD_IDR_RATE = parseFallbackRate(
+  ENVIRONMENT.fallbackUsdIdrRate,
+);
 export const TRADING_STRATEGIES = [
   "scalping",
   "day_trading",
@@ -155,6 +174,8 @@ export const createMarketTransactionSchema = z.object({
     .positive("Total nominal transaksi harus lebih besar dari 0"),
   currency: z.enum(CURRENCIES).default("IDR"),
   notes: z.string().nullable().optional(),
+  // ISO 8601 (mis. "2026-10-19T09:30:00Z"). Kosong = waktu saat dicatat.
+  transaction_date: z.iso.datetime({ offset: true }).optional(),
 });
 
 // Schema Request AI Analysis

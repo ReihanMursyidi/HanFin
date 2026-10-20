@@ -77,6 +77,7 @@ export default async function CryptoMarketPage() {
       activeSymbol={activeSymbol}
       marketAssets={marketAssets}
       transactions={transactions}
+      fxRate={fxRate}
       header={
         <section
           key="header"

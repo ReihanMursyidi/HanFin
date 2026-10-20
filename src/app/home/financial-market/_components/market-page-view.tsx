@@ -24,6 +24,7 @@ interface MarketPageViewProps {
   activeSymbol: string;
   marketAssets: MarketAsset[];
   transactions: MarketTransaction[];
+  fxRate: number;
 }
 
 export function MarketPageView({
@@ -35,6 +36,7 @@ export function MarketPageView({
   activeSymbol: initialSymbol,
   marketAssets,
   transactions,
+  fxRate,
 }: MarketPageViewProps) {
   const [activeSymbol, setActiveSymbol] = useState(initialSymbol);
 
@@ -99,6 +101,7 @@ export function MarketPageView({
             assetType={assetType}
             transactions={transactions}
             currency={currency}
+            fxRate={fxRate}
           />
         </div>
 

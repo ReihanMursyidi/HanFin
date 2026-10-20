@@ -14,12 +14,14 @@ interface TransactionSectionProps {
   assetType: AssetType;
   transactions: MarketTransaction[];
   currency: Currency;
+  fxRate: number;
 }
 
 export function TransactionSection({
   assetType,
   transactions,
   currency,
+  fxRate,
 }: TransactionSectionProps) {
   const [deletingTx, setDeletingTx] = useState<{
     id: string;
@@ -54,12 +56,14 @@ export function TransactionSection({
                   tx.price_per_unit,
                   baseTxCurrency,
                   currency,
+                  fxRate,
                 );
 
                 const displayTotal = convertCurrency(
                   tx.total_amount,
                   baseTxCurrency,
                   currency,
+                  fxRate,
                 );
                 return (
                   <div

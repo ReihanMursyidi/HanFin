@@ -67,6 +67,7 @@ export default async function StocksMarketPage() {
       activeSymbol={activeSymbol}
       marketAssets={marketAssets}
       transactions={transactions}
+      fxRate={fxRate}
       header={
         <section
           key="header"
