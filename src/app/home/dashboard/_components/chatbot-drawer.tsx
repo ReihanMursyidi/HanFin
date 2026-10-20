@@ -34,11 +34,9 @@ import {
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { handleChatStreaming } from "@/features/ai/chat";
-import { getFinancialProfile } from "@/features/profile/action";
 import { cn } from "@/lib/utils";
 import ChatbotTextArea from "./chatbot-textarea";
 
-type FinancialProfile = Awaited<ReturnType<typeof getFinancialProfile>>;
 type ChatMessage = Conversation & { id: string };
 
 // --- SUB-KOMPONEN: THOUGHT BLOCK ---
@@ -140,23 +138,9 @@ export default function ChatbotDrawer() {
 
   // States
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
-  const [profile, setProfile] = useState<FinancialProfile>(null);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [mode, setMode] = useState<"general" | "personal">("general");
 
-  // Fetch Profile saat mount
-  useEffect(() => {
-    let isMounted = true;
-    getFinancialProfile()
-      .then((data) => {
-        if (isMounted) setProfile(data);
-      })
-      .catch((err) => console.error("Error loading profile:", err));
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -189,12 +173,7 @@ export default function ChatbotDrawer() {
         },
       ]);
 
-      const stream = await handleChatStreaming(
-        chatHistory,
-        profile,
-        isThinking,
-        mode,
-      );
+      const stream = await handleChatStreaming(chatHistory, isThinking, mode);
 
       for await (const chunk of stream) {
         setConversation((prev) => {
