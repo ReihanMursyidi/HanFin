@@ -3,7 +3,11 @@
 import { unstable_cache } from "next/cache";
 import { MarketAsset, OHLCData } from "./types";
 import YahooFinance from "yahoo-finance2";
-import { CRYPTO_ASSETS, STOCK_ASSETS } from "@/constants/market-constant";
+import {
+  CRYPTO_ASSETS,
+  FALLBACK_USD_IDR_RATE,
+  STOCK_ASSETS,
+} from "@/constants/market-constant";
 
 const yahooFinance = new YahooFinance({
   suppressNotices: ["ripHistorical", "yahooSurvey"],
@@ -38,10 +42,10 @@ export async function getExchangeRateUSDIDR(): Promise<number> {
     const quote = (await yahooFinance.quote("IDR=X")) as {
       regularMarketPrice?: number;
     };
-    return quote.regularMarketPrice || 17257;
+    return quote.regularMarketPrice || FALLBACK_USD_IDR_RATE;
   } catch (error) {
     console.error("FX Service Error:", error);
-    return 17257;
+    return FALLBACK_USD_IDR_RATE;
   }
 }
 

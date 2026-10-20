@@ -1,3 +1,4 @@
+import { FALLBACK_USD_IDR_RATE } from "@/constants/market-constant";
 import type { Currency } from "@/features/market/types";
 
 // Format tanggal ISO ke format Indonesia
@@ -39,25 +40,10 @@ export function convertCurrency(
   amount: number,
   from: Currency,
   to: Currency,
-  fxRate: number = 18000,
+  fxRate: number = FALLBACK_USD_IDR_RATE,
 ): number {
   if (from === to) return amount;
   if (from === "USD" && to === "IDR") return amount * fxRate;
   if (from === "IDR" && to === "USD") return amount / fxRate;
   return amount;
-}
-
-// Konversi nilai aset sesuai preferensi mata uang user (Objek Parameter).
-export function convertAssetPrice({
-  amount,
-  baseCurrency,
-  targetCurrency,
-  fxRate = 17257,
-}: {
-  amount: number;
-  baseCurrency: Currency;
-  targetCurrency: Currency;
-  fxRate?: number;
-}): number {
-  return convertCurrency(amount, baseCurrency, targetCurrency, fxRate);
 }
