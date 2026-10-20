@@ -21,4 +21,6 @@ export type PendingDeletion = Pick<
 export type WizardResult = {
   message: string;
   pendingDeletions: PendingDeletion[];
+  // true jika input bukan perintah transaksi (ditolak) atau tidak ada aksi yang dijalankan
+  rejected?: boolean;
 };

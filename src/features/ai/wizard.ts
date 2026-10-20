@@ -14,11 +14,27 @@ import {
   createTransactionDeclaration,
   deleteTransactionDeclaration,
   getTransactionDeclaration,
+  rejectRequestDeclaration,
   updateTransactionDeclaration,
 } from "./functionTransaction";
 import { createAI } from "./instance";
 
 const AI_MODEL = "gemini-3-flash-preview";
+
+// Wizard hanya untuk MENJALANKAN perintah (catat / ubah / hapus), bukan untuk bertanya.
+const MUTATING_TOOLS = new Set([
+  "create_transaction",
+  "update_transaction",
+  "delete_transaction",
+]);
+
+const REJECT_MESSAGE =
+  "Wizard ini hanya untuk menjalankan perintah transaksi: mencatat, mengubah, atau menghapus. Untuk bertanya atau menganalisis data transaksi, gunakan chatbot Hanbot.";
+
+// Dipakai saat AI hanya melakukan pencarian tanpa menjalankan perintah apa pun.
+// Sengaja tidak memuat isi transaksi, jadi data tidak bisa bocor lewat toast.
+const NO_ACTION_MESSAGE =
+  "Tidak ada perubahan yang dilakukan. Wizard hanya menjalankan perintah mencatat, mengubah, atau menghapus transaksi dan tidak menampilkan data transaksi. Untuk bertanya, gunakan chatbot Hanbot. Untuk mengubah atau menghapus, sebutkan deskripsi, nominal, atau tanggal transaksinya dengan lebih jelas.";
 
 // 1. HANDLE WIZARD INPUT (Direct Text Input)
 export async function handleWizardInput(message: string) {
@@ -136,6 +152,8 @@ function buildInitialContents(
               You are an AI Wizard finance assistant who manages financial transactions via ${type}.
             </role>
             <instruction>
+              - SCOPE: you ONLY execute commands that create, update, or delete a transaction. If the input is anything else (for example a question like "transaksi terakhir saya apa?", a request to view, list, summarize or analyze transactions, financial advice, a greeting, or an unrelated topic), call 'reject_request' immediately and call no other function.
+              - 'get_transaction' is an internal lookup used ONLY to locate the target of an update or delete command. NEVER use it to answer questions, and NEVER reveal or list transaction data in your final summary.
               - Extract transaction intent from ${type === "text" ? "the provided text" : "the audio file"} in Bahasa Indonesia.
               - If the request is to update or delete a transaction, you MUST call 'get_transaction' first to find the target transaction ID and details.
               - When updating a transaction, pass the id from 'get_transaction' and ONLY the fields that change; unchanged fields are kept automatically.
@@ -316,6 +334,17 @@ export async function handleWizardTools(
     pendingDeletions,
   });
 
+  const rejectResult = (message: string): WizardResult => ({
+    message,
+    pendingDeletions: [],
+    rejected: true,
+  });
+
+  // Pelacak niat: pencarian tanpa satu pun perintah berarti user bertanya,
+  // bukan memerintah. Jawaban model dalam kasus itu tidak boleh ditampilkan.
+  let lookupUsed = false;
+  let mutationAttempted = false;
+
   const ai = createAI();
   const MAX_LOOPS = 5;
 
@@ -331,6 +360,7 @@ export async function handleWizardTools(
               createTransactionDeclaration,
               deleteTransactionDeclaration,
               updateTransactionDeclaration,
+              rejectRequestDeclaration,
             ],
           },
         ],
@@ -340,7 +370,20 @@ export async function handleWizardTools(
     const functionCalls = response.functionCalls;
 
     if (!functionCalls || functionCalls.length === 0) {
+      if (lookupUsed && !mutationAttempted) {
+        return rejectResult(NO_ACTION_MESSAGE);
+      }
       return buildResult(response.text);
+    }
+
+    // Input bukan perintah: berhenti sebelum fungsi apa pun dijalankan
+    if (functionCalls.some((call) => call.name === "reject_request")) {
+      return rejectResult(REJECT_MESSAGE);
+    }
+
+    for (const call of functionCalls) {
+      if (call.name === "get_transaction") lookupUsed = true;
+      if (MUTATING_TOOLS.has(call.name ?? "")) mutationAttempted = true;
     }
 
     if (response.candidates?.[0]?.content) {
@@ -380,5 +423,8 @@ export async function handleWizardTools(
     });
   }
 
+  if (lookupUsed && !mutationAttempted) {
+    return rejectResult(NO_ACTION_MESSAGE);
+  }
   return buildResult();
 }

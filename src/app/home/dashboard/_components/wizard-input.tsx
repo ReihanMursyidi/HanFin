@@ -58,7 +58,18 @@ export default function WizardInput() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: handleWizardTools,
-    onSuccess: ({ message, pendingDeletions }) => {
+    onSuccess: ({ message, pendingDeletions, rejected }) => {
+      // Input bukan perintah transaksi: tampilkan penolakan dan pertahankan
+      // teks agar user bisa mengubahnya; tidak ada data yang berubah.
+      if (rejected) {
+        toast.warning(
+          <div className="response-ai w-full! max-h-48 overflow-y-auto text-sm leading-relaxed">
+            <Markdown>{message}</Markdown>
+          </div>,
+        );
+        return;
+      }
+
       toast.success(
         <div className="response-ai w-full! max-h-48 overflow-y-auto text-sm leading-relaxed">
           <Markdown>{message}</Markdown>

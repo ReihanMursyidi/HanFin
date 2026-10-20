@@ -34,7 +34,8 @@ const transactionProperties = {
 
 export const getTransactionDeclaration: FunctionDeclaration = {
   name: "get_transaction",
-  description: "Get all transactions from the user's financial history.",
+  description:
+    "Internal lookup used ONLY to locate the target transaction of an update or delete command. Never use it to answer questions or to show the user their transactions.",
   parameters: {
     type: Type.OBJECT,
     properties: transactionProperties,
@@ -70,5 +71,20 @@ export const updateTransactionDeclaration: FunctionDeclaration = {
     type: Type.OBJECT,
     properties: transactionProperties,
     required: ["id"],
+  },
+};
+
+export const rejectRequestDeclaration: FunctionDeclaration = {
+  name: "reject_request",
+  description:
+    "Call this when the user's input is NOT a command to create, update, or delete a transaction: for example a question, a request to view, list, summarize or analyze transactions, financial advice, a greeting, or an unrelated topic. Do not call any other function in that case.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      reason: {
+        type: Type.STRING,
+        description: "Short reason in Bahasa Indonesia",
+      },
+    },
   },
 };
