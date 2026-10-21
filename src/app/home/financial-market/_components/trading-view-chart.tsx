@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import type { AssetType, OHLCData } from "@/features/market/types";
 import { getMarketChartData } from "@/features/market/action";
 
+// Warna teks chart bila CSS variable tema (--chart-4) belum terdefinisi.
+const DEFAULT_CHART_TEXT_COLOR = { dark: "#99c2ff", light: "#0f2855" } as const;
+
 interface TradingViewChartProps {
   data: OHLCData[];
   symbol: string;
@@ -90,20 +93,18 @@ export function TradingViewChart({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const getResolvedCssVar = (varName: string, fallback: string) => {
-      if (typeof window === "undefined") return fallback;
-      const val = getComputedStyle(document.documentElement)
+    const readCssVar = (varName: string): string | null => {
+      const value = getComputedStyle(document.documentElement)
         .getPropertyValue(varName)
         .trim();
-      return val || fallback;
+      return value === "" ? null : value;
     };
 
     const getThemeColors = () => {
       const isDark = document.documentElement.classList.contains("dark");
-      const textColor = getResolvedCssVar(
-        "--chart-4",
-        isDark ? "#99c2ff" : "#0f2855",
-      );
+      const textColor =
+        readCssVar("--chart-4") ??
+        (isDark ? DEFAULT_CHART_TEXT_COLOR.dark : DEFAULT_CHART_TEXT_COLOR.light);
       const gridColor = isDark
         ? "rgba(255, 255, 255, 0.08)"
         : "rgba(15, 40, 85, 0.08)";

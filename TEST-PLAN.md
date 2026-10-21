@@ -12,16 +12,16 @@
 
 ## 1. Temuan QA (perlu tindakan)
 
-| ID     | Tingkat | Temuan                                                                                                                                                                                                                         | Status                         |
-| ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| BUG-1  | Tinggi  | `generative-content.ts`: indeks `MAX_TIME_BUCKETS[groupBy]` ditolak TypeScript (TS7053). Akan **menggagalkan `next build`**.                                                                                                   | ✅ Diperbaiki dan diverifikasi |
-| BUG-0  | —       | Koreksi: pemeriksaan sintaks sebelumnya tidak pernah berjalan karena filter `grep` menyembunyikan error `tsc` 6.0 (TS5112). Klaim "tidak ada error" di percakapan sebelumnya tidak valid. Sudah dijalankan ulang dengan benar. | ✅ Dikoreksi                   |
-| RISK-1 | Tinggi  | **Poin 1 belum diterapkan.** `features/market/ai-action.ts` tidak punya `"use server"`, sehingga AI Predictor kemungkinan gagal di browser.                                                                                    | ❌ Perlu perbaikan (1 baris)   |
-| RISK-2 | Sedang  | Chat streaming: `handleChatStreaming` adalah async generator yang diekspor dari file `"use server"`. Next.js tidak menjamin bentuk ini. Jika streaming tidak tampil, ini penyebabnya.                                          | ⏳ Uji M-8.1                   |
-| RISK-3 | Sedang  | Idempotensi: tidak ada kunci anti-duplikasi. Jika request beli terkirim dua kali (retry jaringan, wizard AI), transaksi tercatat dua kali. Form manual sudah `disabled` saat pending; jalur wizard market belum saya pastikan. | ⏳ Uji M-7.6                   |
-| RISK-4 | Rendah  | Injeksi lewat deskripsi transaksi: teks dalam kolom `description` masih bisa memengaruhi model. Perubahan poin 9 hanya mengurangi risiko, tidak menghilangkannya.                                                              | ⏳ Uji M-9.5                   |
-| RISK-5 | Rendah  | Jika jawaban chat habis `maxOutputTokens`, tidak ada penanganan khusus. Pengguna hanya melihat error generik.                                                                                                                  | ⏳ Uji M-8.4                   |
-| RISK-6 | Info    | Harga rata-rata SQL memakai `NUMERIC`, sehingga sisa floating point tidak mungkin terjadi di database. Reset di sisi JS tetap relevan untuk paritas dan tes.                                                                   | ✅ Dicatat                     |
+| ID     | Tingkat | Temuan                                                                                                                                                                                                                                                      | Status                                    |
+| ------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| BUG-1  | —       | DICABUT. Semula dilaporkan sebagai error build (TS7053), tetapi itu artefak sandbox: tipe zod tidak terpasang sehingga `Analysis` kehilangan union literalnya. Dengan tipe yang benar, `MAX_TIME_BUCKETS[analysis.groupBy]` valid dan lolos `tsc --strict`. | ❌ False positive (tidak perlu perbaikan) |
+| BUG-0  | —       | Koreksi: pemeriksaan sintaks sebelumnya tidak pernah berjalan karena filter `grep` menyembunyikan error `tsc` 6.0 (TS5112). Klaim "tidak ada error" di percakapan sebelumnya tidak valid. Sudah dijalankan ulang dengan benar.                              | ✅ Dikoreksi                              |
+| RISK-1 | Tinggi  | **Poin 1 belum diterapkan.** `features/market/ai-action.ts` tidak punya `"use server"`, sehingga AI Predictor kemungkinan gagal di browser.                                                                                                                 | ❌ Perlu perbaikan (1 baris)              |
+| RISK-2 | Sedang  | Chat streaming: `handleChatStreaming` adalah async generator yang diekspor dari file `"use server"`. Next.js tidak menjamin bentuk ini. Jika streaming tidak tampil, ini penyebabnya.                                                                       | ⏳ Uji M-8.1                              |
+| RISK-3 | Sedang  | Idempotensi: tidak ada kunci anti-duplikasi. Jika request beli terkirim dua kali (retry jaringan, wizard AI), transaksi tercatat dua kali. Form manual sudah `disabled` saat pending; jalur wizard market belum saya pastikan.                              | ⏳ Uji M-7.6                              |
+| RISK-4 | Rendah  | Injeksi lewat deskripsi transaksi: teks dalam kolom `description` masih bisa memengaruhi model. Perubahan poin 9 hanya mengurangi risiko, tidak menghilangkannya.                                                                                           | ⏳ Uji M-9.5                              |
+| RISK-5 | Rendah  | Jika jawaban chat habis `maxOutputTokens`, tidak ada penanganan khusus. Pengguna hanya melihat error generik.                                                                                                                                               | ⏳ Uji M-8.4                              |
+| RISK-6 | Info    | Harga rata-rata SQL memakai `NUMERIC`, sehingga sisa floating point tidak mungkin terjadi di database. Reset di sisi JS tetap relevan untuk paritas dan tes.                                                                                                | ✅ Dicatat                                |
 
 ## 2. Matriks skenario
 
@@ -129,6 +129,40 @@
 | 9.6 | K   | M    | Pertanyaan lebih dari 2000 karakter                                                                        | Dipotong; tetap dijawab                                                 | ⏳              |
 | 9.7 | K   | M    | DevTools > Network: payload `handleChatStreaming`                                                          | Tidak lagi membawa profil                                               | ⏳              |
 | 9.8 | S   | U    | Pembatasan dan penghapusan tag                                                                             | ✅ U9-02…04                                                             |
+
+### Poin 10 — Lingkup wizard: hanya perintah transaksi (temuan dari uji manual)
+
+Laporan: di halaman Transaction, "transaksi terakhir saya apa?" dijawab AI lewat toast. Seharusnya ditolak.
+
+| ID    | P   | Tipe | Skenario                                                                              | Hasil yang diharapkan                                                                            | Status                   |
+| ----- | --- | ---- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------ |
+| 10.1  | S   | M    | "transaksi terakhir saya apa?"                                                        | Toast peringatan penolakan; tidak ada isi transaksi di toast; teks input tetap                   | ⏳                       |
+| 10.2  | S   | M    | "berapa total pengeluaran bulan ini?"                                                 | Ditolak                                                                                          | ⏳                       |
+| 10.3  | S   | M    | "tampilkan semua transaksi saya"                                                      | Ditolak, tidak ada data tampil                                                                   | ⏳                       |
+| 10.4  | S   | M    | "catat kopi 15 ribu"                                                                  | Tetap berhasil (regresi)                                                                         | ⏳                       |
+| 10.5  | S   | M    | "ubah nominal kopi jadi 30 ribu" / "hapus transaksi kopi"                             | Tetap berjalan; hapus tetap lewat dialog konfirmasi                                              | ⏳                       |
+| 10.6  | K   | M    | "halo" dan "apa itu inflasi?"                                                         | Ditolak. Catatan: jika model menjawab tanpa memanggil tool apa pun, jawaban lolos (lihat RISK-7) | ⏳                       |
+| 10.7  | K   | M    | Perintah suara berisi pertanyaan ("transaksi terakhir saya apa")                      | Ditolak seperti teks                                                                             | ⏳                       |
+| 10.8  | K   | M    | "hapus transaksi kopi kemarin" saat tidak ada yang cocok                              | Pesan "Tidak ada perubahan yang dilakukan..." tanpa data                                         | ⏳                       |
+| 10.9  | J   | M    | "catat makan siang" tanpa nominal                                                     | Model bertanya nominal; tidak dianggap penolakan                                                 | ⏳                       |
+| 10.10 | J   | M    | Pertanyaan bercampur perintah: "catat kopi 15 ribu lalu tampilkan transaksi terakhir" | Kopi tercatat; bagian tampilkan data tidak dijawab                                               | ⏳                       |
+| 10.11 | S   | Mock | Alur kontrol dengan model tiruan (13 kasus, `wizard-flow-tests`)                      | Pertanyaan ditolak, perintah tetap jalan, tool lookup tidak bocor                                | ✅ 13/13 + mutation test |
+
+RISK-7 (rendah): jika model menjawab pertanyaan tanpa memanggil tool apa pun, jawabannya tetap tampil. Jalur ini tidak membocorkan data transaksi (data hanya diperoleh lewat tool), tetapi wizard bisa menjawab hal umum. Penahannya adalah prompt dan tool `reject_request`; tidak ada pengaman deterministik untuk kasus ini.
+
+### Poin 11 — Warning aislop (ukuran file dan fallback)
+
+| ID   | P   | Tipe | Skenario                                                       | Hasil yang diharapkan                                              | Status                   |
+| ---- | --- | ---- | -------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------ |
+| 11.1 | S   | M    | Market wizard: "beli 1 lot BBCA harga 9100"                    | Transaksi tercatat; riwayat dan portofolio ter-refresh             | ⏳                       |
+| 11.2 | S   | M    | Market wizard: "beli 1 lot BBCA" (tanpa harga)                 | Memakai harga pasar real-time                                      | ⏳                       |
+| 11.3 | S   | M    | Market wizard: "jual BBCA" / "hapus transaksi BBCA"            | Perintah dijalankan sesuai aturan lama                             | ⏳                       |
+| 11.4 | K   | M    | Market wizard: kalimat tanpa buy/sell jelas                    | Tidak ada transaksi dibuat; pesan penjelasan                       | ⏳                       |
+| 11.5 | S   | M    | Halaman Transaction: paginasi dan pencarian                    | Total data dan halaman benar; daftar kosong tetap tampil "0 hasil" | ⏳                       |
+| 11.6 | K   | M    | Chart Stocks/Crypto: ganti tema terang/gelap                   | Warna teks dan grid mengikuti tema, tanpa error konsol             | ⏳                       |
+| 11.7 | J   | M    | Hapus variabel CSS --chart-4 sementara di DevTools             | Teks chart memakai warna bawaan                                    | ⏳                       |
+| 11.8 | S   | Mock | Wizard lama vs baru, 13 skenario identik + 3 perubahan sengaja | Perilaku sama; transaction_type kosong atau tidak valid ditolak    | ✅ 16/16 + mutation test |
+| 11.9 | S   | Mock | getTransactions (count null) dan warna tema                    | Error eksplisit; warna bawaan bernama                              | ✅ 9/9 + mutation test   |
 
 ### Lintas poin
 

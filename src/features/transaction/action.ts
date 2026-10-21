@@ -56,8 +56,12 @@ export async function getTransactions(params?: {
 
   if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
-  // count null hanya jika query gagal di luar error Supabase; anggap 0 hasil.
-  const totalData = count ?? 0;
+  // Dengan { count: "exact" } dan tanpa error, count selalu berupa angka.
+  // Jika null, jumlah halaman tidak bisa dihitung; jangan tampilkan "0 hasil".
+  if (count === null) {
+    throw new Error("Failed to fetch transactions: total count is missing");
+  }
+  const totalData = count;
 
   return {
     data,
