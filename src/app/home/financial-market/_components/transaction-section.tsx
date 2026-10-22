@@ -88,8 +88,9 @@ export function TransactionSection({
                           {tx.symbol}
                         </span>
                       </div>
+
                       <p className="text-muted-foreground text-[11px]">
-                        {tx.quantity.toLocaleString("id-ID")}{" "}
+                        {tx.quantity}{" "}
                         {assetType === "stocks" ? "lembar" : "unit"} @{" "}
                         {formatCurrency(displayPrice, currency)}
                       </p>
