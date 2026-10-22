@@ -80,9 +80,6 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
   },
 ];
 
-// Endpoint publik Binance untuk fetch data kripto (failover antar mirror).
-// Bukan URL deployment-specific (stabil & publik), jadi ditaruh di konstanta,
-// bukan env var.
 export const BINANCE_ENDPOINTS = [
   "https://data-api.binance.vision",
   "https://api1.binance.com",
@@ -135,18 +132,16 @@ export const ASSET_TYPES = ["stocks", "crypto"] as const;
 export const TRANSACTION_TYPES = ["buy", "sell"] as const;
 export const CURRENCIES = ["IDR", "USD"] as const;
 
-// Satu-satunya kurs cadangan USD -> IDR. Dipakai jika kurs live (Yahoo
-// Finance) gagal diambil, dan sebagai default convertCurrency.
-// Atur lewat NEXT_PUBLIC_FALLBACK_USD_IDR_RATE di .env.local (dan di
-// pengaturan environment hosting). Jika kosong atau tidak valid, dipakai
-// nilai bawaan di bawah ini.
-const DEFAULT_FALLBACK_USD_IDR_RATE = 17257;
-
 function parseFallbackRate(raw: string | undefined): number {
   const rate = Number(raw);
-  return Number.isFinite(rate) && rate > 0
-    ? rate
-    : DEFAULT_FALLBACK_USD_IDR_RATE;
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new Error(
+      "NEXT_PUBLIC_FALLBACK_USD_IDR_RATE belum diatur atau tidak valid. " +
+        "Isi dengan kurs cadangan USD->IDR (angka > 0) di .env.local, " +
+        "dan di pengaturan environment hosting.",
+    );
+  }
+  return rate;
 }
 
 export const FALLBACK_USD_IDR_RATE = parseFallbackRate(

@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Sparkles,
   Loader2,
-  TrendingUp,
   ShieldAlert,
   Target,
   Search,
@@ -357,7 +356,6 @@ export function AiPredictorCard({
             {/* Rekomendasi & Risiko */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-primary/10">
               <div className="flex items-center gap-1.5 font-semibold text-xs">
-                <TrendingUp className="size-4 text-primary shrink-0" />
                 <span>Rekomendasi: {analysis.recommendation}</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">

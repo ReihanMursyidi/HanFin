@@ -39,7 +39,7 @@ import ChatbotTextArea from "./chatbot-textarea";
 
 type ChatMessage = Conversation & { id: string };
 
-// --- SUB-KOMPONEN: THOUGHT BLOCK ---
+// SUB-KOMPONEN: THOUGHT BLOCK
 function ThoughtBlock({ text }: { text: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -140,7 +140,6 @@ export default function ChatbotDrawer() {
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [mode, setMode] = useState<"general" | "personal">("general");
-
 
   useEffect(() => {
     if (chatRef.current) {

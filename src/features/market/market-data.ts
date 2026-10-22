@@ -30,18 +30,27 @@ async function fetchBinancePublic<T>(path: string): Promise<T> {
   throw new Error("Seluruh endpoint Binance API tidak dapat dijangkau");
 }
 
-// ==== KURS MATA UANG ====
-export async function getExchangeRateUSDIDR(): Promise<number> {
-  try {
-    const quote = (await yahooFinance.quote("IDR=X")) as {
-      regularMarketPrice?: number;
-    };
-    return quote.regularMarketPrice || FALLBACK_USD_IDR_RATE;
-  } catch (error) {
-    console.error("FX Service Error:", error);
-    return FALLBACK_USD_IDR_RATE;
-  }
-}
+export const getExchangeRateUSDIDR = unstable_cache(
+  async (): Promise<number> => {
+    try {
+      const quote = (await yahooFinance.quote("IDR=X")) as {
+        regularMarketPrice?: number;
+      };
+      if (quote.regularMarketPrice && quote.regularMarketPrice > 0) {
+        return quote.regularMarketPrice;
+      }
+      console.error(
+        "FX Service Error: Yahoo Finance returned no valid rate, using FALLBACK_USD_IDR_RATE",
+      );
+      return FALLBACK_USD_IDR_RATE;
+    } catch (error) {
+      console.error("FX Service Error (Yahoo Finance):", error);
+      return FALLBACK_USD_IDR_RATE;
+    }
+  },
+  ["usd-idr-exchange-rate"],
+  { revalidate: 300 },
+);
 
 // ==== CRYPTO MARKET (BINANCE PUBLIC REST API) ====
 type BinanceTickerRaw = {
