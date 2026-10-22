@@ -1,5 +1,14 @@
 import { z } from "zod";
 import { ENVIRONMENT } from "@/config/environment";
+import {
+  ASSET_TYPES,
+  CURRENCIES,
+  MOMENTUM_INDICATORS,
+  TRADING_STRATEGIES,
+  TRANSACTION_TYPES,
+  TREND_INDICATORS,
+  VOLUME_INDICATORS,
+} from "@/features/market/types";
 
 // 1. DAFTAR ASET & OPTIONS UI
 export interface AssetConfig {
@@ -127,11 +136,6 @@ export function getAssetLogoUrl(symbol: string, assetType: string): string {
   return stockLogos[cleanSymbol] || "";
 }
 
-// 2. CONSTANTS & ENUMS (TUPLE AS CONST)
-export const ASSET_TYPES = ["stocks", "crypto"] as const;
-export const TRANSACTION_TYPES = ["buy", "sell"] as const;
-export const CURRENCIES = ["IDR", "USD"] as const;
-
 function parseFallbackRate(raw: string | undefined): number {
   const rate = Number(raw);
   if (!Number.isFinite(rate) || rate <= 0) {
@@ -147,16 +151,6 @@ function parseFallbackRate(raw: string | undefined): number {
 export const FALLBACK_USD_IDR_RATE = parseFallbackRate(
   ENVIRONMENT.fallbackUsdIdrRate,
 );
-export const TRADING_STRATEGIES = [
-  "scalping",
-  "day_trading",
-  "swing_trading",
-  "investing",
-] as const;
-
-export const TREND_INDICATORS = ["SMA", "EMA", "ADX"] as const;
-export const MOMENTUM_INDICATORS = ["RSI", "MACD", "STOCHASTIC"] as const;
-export const VOLUME_INDICATORS = ["OBV", "VWAP", "VOLUME_PROFILE"] as const;
 
 // 3. ZOD SCHEMAS
 
@@ -219,19 +213,3 @@ export const aiAnalysisResponseSchema = z.object({
     resistance: z.array(z.number()),
   }),
 });
-
-// 4. INFERRED TYPESCRIPT TYPES
-export type AssetType = (typeof ASSET_TYPES)[number];
-export type TransactionType = (typeof TRANSACTION_TYPES)[number];
-export type Currency = (typeof CURRENCIES)[number];
-export type TradingStrategy = (typeof TRADING_STRATEGIES)[number];
-export type TrendIndicator = (typeof TREND_INDICATORS)[number];
-export type MomentumIndicator = (typeof MOMENTUM_INDICATORS)[number];
-export type VolumeIndicator = (typeof VOLUME_INDICATORS)[number];
-
-export type CreateMarketTransactionInput = z.infer<
-  typeof createMarketTransactionSchema
->;
-
-export type AIAnalysisRequest = z.infer<typeof aiAnalysisRequestSchema>;
-export type AIAnalysisResponse = z.infer<typeof aiAnalysisResponseSchema>;

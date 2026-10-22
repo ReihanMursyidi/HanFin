@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { handleMarketWizardTools } from "@/features/market/wizard";
-import type { AssetType, Currency } from "@/constants/market-constant";
+import { AssetType, Currency } from "@/features/market/types";
 
 const formSchema = z.object({
   message: z.string().trim().min(1, "Pesan wajib diisi"),

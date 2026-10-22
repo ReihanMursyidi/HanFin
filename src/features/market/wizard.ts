@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { AssetType, Currency } from "@/constants/market-constant";
 import { createAI } from "@/features/ai/instance";
 import { convertCurrency } from "@/lib/format";
 import {
@@ -23,6 +22,7 @@ import {
   getAssetOptions,
   parseMarketWizardInput,
 } from "./wizard-prompt";
+import { AssetType, Currency } from "./types";
 
 const AI_MODEL = "gemini-3-flash-preview";
 

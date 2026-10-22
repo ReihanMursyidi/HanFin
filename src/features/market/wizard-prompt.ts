@@ -1,10 +1,6 @@
 import type { Content } from "@google/genai";
-import {
-  CRYPTO_ASSETS,
-  STOCK_ASSETS,
-  type AssetType,
-  type Currency,
-} from "@/constants/market-constant";
+import { CRYPTO_ASSETS, STOCK_ASSETS } from "@/constants/market-constant";
+import { AssetType, Currency } from "./types";
 
 // Daftar aset valid sesuai kelas aset yang sedang dipakai
 export function getAssetOptions(assetType: AssetType) {

@@ -1,6 +1,11 @@
-export type AssetType = "stocks" | "crypto";
-export type TransactionType = "buy" | "sell";
-export type Currency = "IDR" | "USD";
+export const ASSET_TYPES = ["stocks", "crypto"] as const;
+export type AssetType = (typeof ASSET_TYPES)[number];
+
+export const TRANSACTION_TYPES = ["buy", "sell"] as const;
+export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+
+export const CURRENCIES = ["IDR", "USD"] as const;
+export type Currency = (typeof CURRENCIES)[number];
 
 // Data Aset Pasar Real-Time
 export interface MarketAsset {
@@ -61,7 +66,6 @@ export interface MarketTransaction {
   created_at: string;
 }
 
-// Input Form Transaksi Manual
 export interface CreateMarketTransactionInput {
   symbol: string;
   asset_name: string;
@@ -71,17 +75,28 @@ export interface CreateMarketTransactionInput {
   price_per_unit: number;
   total_amount: number;
   currency: Currency;
-  notes?: string;
+  notes?: string | null;
+  transaction_date?: string;
 }
 
 // Pilihan Metode Trading
-export type TradingStrategy =
-  "scalping" | "day_trading" | "swing_trading" | "investing";
+export const TRADING_STRATEGIES = [
+  "scalping",
+  "day_trading",
+  "swing_trading",
+  "investing",
+] as const;
+export type TradingStrategy = (typeof TRADING_STRATEGIES)[number];
 
 // Kategori Indikator AI Agent
-export type TrendIndicator = "SMA" | "EMA" | "ADX";
-export type MomentumIndicator = "RSI" | "MACD" | "STOCHASTIC";
-export type VolumeIndicator = "OBV" | "VWAP" | "VOLUME_PROFILE";
+export const TREND_INDICATORS = ["SMA", "EMA", "ADX"] as const;
+export type TrendIndicator = (typeof TREND_INDICATORS)[number];
+
+export const MOMENTUM_INDICATORS = ["RSI", "MACD", "STOCHASTIC"] as const;
+export type MomentumIndicator = (typeof MOMENTUM_INDICATORS)[number];
+
+export const VOLUME_INDICATORS = ["OBV", "VWAP", "VOLUME_PROFILE"] as const;
+export type VolumeIndicator = (typeof VOLUME_INDICATORS)[number];
 
 export interface AIAnalysisRequest {
   symbol: string;

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { AssetType, Currency } from "@/constants/market-constant";
 import type {
+  AssetType,
+  Currency,
   MarketAsset,
   MarketTransaction,
   OHLCData,

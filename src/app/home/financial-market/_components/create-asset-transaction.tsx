@@ -32,12 +32,8 @@ import {
   UI_CRYPTO_OPTIONS,
   UI_TRADEABLE_STOCK_OPTIONS,
 } from "@/constants/market-constant";
-import type {
-  AssetType,
-  Currency,
-  TransactionType,
-} from "@/constants/market-constant";
 import { toast } from "sonner";
+import { AssetType, Currency, TransactionType } from "@/features/market/types";
 
 interface CreateAssetTransactionProps {
   assetType: AssetType;

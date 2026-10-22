@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { convertCurrency, formatCurrency, formatDate } from "@/lib/format";
 import { CreateAssetTransaction } from "./create-asset-transaction";
 import { DeleteAssetTransaction } from "./delete-asset-transaction";
-import type { AssetType, Currency } from "@/constants/market-constant";
-import { MarketTransaction } from "@/features/market/types";
+import {
+  AssetType,
+  Currency,
+  MarketTransaction,
+} from "@/features/market/types";
 
 interface TransactionSectionProps {
   assetType: AssetType;
