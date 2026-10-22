@@ -238,16 +238,16 @@ export function AiPredictorCard({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="scalping">
-                ⚡ Scalping (Sangat Pendek / 15m)
+                Scalping (Sangat Pendek / 15m)
               </SelectItem>
               <SelectItem value="day_trading">
-                ☀️ Day Trading (Harian / 1h)
+                Day Trading (Harian / 1h)
               </SelectItem>
               <SelectItem value="swing_trading">
-                🌊 Swing Trade (Mingguan / 1D)
+                Swing Trade (Mingguan / 1D)
               </SelectItem>
               <SelectItem value="investing">
-                🚀 Invest / Position (Jangka Panjang / 1W)
+                Invest / Position (Jangka Panjang / 1W)
               </SelectItem>
             </SelectContent>
           </Select>
@@ -344,7 +344,7 @@ export function AiPredictorCard({
             </>
           ) : (
             <>
-              <Sparkles className="size-3.5 mr-2 text-primary-foreground" />
+              <Sparkles className="size-3.5 text-primary-foreground" />
               Jalankan Analisis AI ({symbol})
             </>
           )}
@@ -353,7 +353,6 @@ export function AiPredictorCard({
         {/* Hasil Analisis AI */}
         {analysis && (
           <div className="pt-2 space-y-3 text-xs border-t">
-            {/* Rekomendasi & Risiko */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-primary/10">
               <div className="flex items-center gap-1.5 font-semibold text-xs">
                 <span>Rekomendasi: {analysis.recommendation}</span>
@@ -399,12 +398,10 @@ export function AiPredictorCard({
               </div>
             )}
 
-            {/* Summary */}
             <p className="text-xs leading-relaxed text-muted-foreground">
               {analysis.summary}
             </p>
 
-            {/* Detail Analisis */}
             <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-lg">
               <p className="text-xs font-semibold text-foreground">
                 Detail Analisis: {analyzedParams?.symbol} (
@@ -418,12 +415,11 @@ export function AiPredictorCard({
               </ul>
             </div>
 
-            {/* Key Levels */}
             {analysis.keyLevels && (
               <div className="pt-2 border-t space-y-1.5">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                  <Layers className="size-3 text-primary shrink-0" /> Key Levels
-                  Terdekat
+                  <Layers className="size-3 text-primary shrink-0" />
+                  Key Levels Terdekat
                 </span>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] bg-muted/30 p-2.5 rounded-md">
                   <div className="truncate">

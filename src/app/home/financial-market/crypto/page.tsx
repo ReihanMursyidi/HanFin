@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
-
 import { getFinancialProfile } from "@/features/profile/action";
-
 import {
   getPortfolioAssets,
   getMarketTransactions,
 } from "@/features/market/action";
-
 import {
   getCryptoChartData,
   getCryptoMarketData,
   getExchangeRateUSDIDR,
 } from "@/features/market/market-data";
-
 import { convertCurrency } from "@/lib/format";
-
-import type { Currency } from "@/constants/market-constant";
-
 import { MarketPageView } from "../_components/market-page-view";
+import { Currency } from "@/features/market/types";
 
 function getCurrencyFromProfile(profile: unknown): Currency {
   if (
