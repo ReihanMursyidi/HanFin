@@ -4,6 +4,26 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --animate-blob: blob 12s ease-in-out infinite;
+}
+
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(20px, -30px) scale(1.08);
+  }
+  50% {
+    transform: translate(-15px, 15px) scale(0.95);
+  }
+  75% {
+    transform: translate(25px, 10px) scale(1.05);
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -58,7 +78,7 @@
   --popover-foreground: #0f2855;
 
   /* Brand / Primary Palette */
-  --primary: #2b71f1;
+  --primary: #2869e2;
   --primary-foreground: #ffffff; /* Putih sangat jelas di atas biru elektrik */
 
   /* Secondary & Accent Palette */
