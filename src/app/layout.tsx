@@ -47,11 +47,36 @@ const fontVariables = cn(
 );
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hanfin.app"),
   title: {
     default: "HanFin - Autonomous AI Finance Agent",
     template: "%s | HanFin",
   },
-  description: "Autonomous AI Finance Agent for personal wealth management",
+  description:
+    "Kelola keuangan pribadi, lacak arus kas, dan analisis portofolio saham & kripto secara cerdas menggunakan AI.",
+  keywords: [
+    "AI Finance Agent",
+    "Manajemen Keuangan",
+    "Pencatat Transaksi",
+    "Crypto Tracker",
+    "Analisis Pasar AI",
+  ],
+  authors: [{ name: "Reihan Mursyidi" }],
+  openGraph: {
+    title: "HanFin - Autonomous AI Finance Agent",
+    description:
+      "Kelola keuangan pribadi dan portofolio investasi Anda dengan bantuan AI.",
+    url: "https://hanfin.app",
+    siteName: "HanFin",
+    locale: "id_ID",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hanfin - Autonomous AI Finance Agent",
+    description:
+      "Kelola keuangan pribadi dan portofolio investasi dengan bantuan AI.",
+  },
 };
 
 export default function RootLayout({
@@ -63,7 +88,10 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full antialiased font-sans", fontVariables)}
+      className={cn(
+        "h-full scroll-smooth antialiased font-sans",
+        fontVariables,
+      )}
     >
       <body
         className="flex flex-col min-h-full custom-scrollbar bg-background text-foreground"
