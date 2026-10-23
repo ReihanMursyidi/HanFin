@@ -68,7 +68,7 @@ export function calculateTechnicalIndicators(
   const volumes = candles.map((c) => c.volume || 0);
   const lastClose = closes[closes.length - 1];
 
-  // A. PENENTUAN DUAL PERIOD TERSTRUKTUR BERDASARKAN STRATEGI
+  // A. DUAL PERIOD STRATEGY
   let fastPeriod = 20;
   let slowPeriod = 50;
 
@@ -86,9 +86,10 @@ export function calculateTechnicalIndicators(
     slowPeriod = 200;
   }
 
-  // B. KALKULASI DUAL TREND INDICATOR (SMA / EMA / ADX)
+  // B. TREND INDICATOR
   let fastValue: number | null = null;
   let slowValue: number | null = null;
+
   let trendSignal: "Bullish" | "Bearish" | "Neutral" = "Neutral";
   let crossoverStatus = "Konfirmasi Tren Netral";
 
@@ -127,7 +128,6 @@ export function calculateTechnicalIndicators(
       }
     }
   } else {
-    // Default SMA Dual Period
     const fastSma = SMA.calculate({ period: fastPeriod, values: closes });
     const slowSma = SMA.calculate({ period: slowPeriod, values: closes });
 
@@ -151,7 +151,7 @@ export function calculateTechnicalIndicators(
     }
   }
 
-  // C. KALKULASI MOMENTUM (RSI, MACD, STOCHASTIC)
+  // C. MOMENTUM INDICATOR
   let lastRsi: number | null = null;
   let macdHistogram: number | null = null;
   let stochK: number | null = null;
@@ -168,7 +168,6 @@ export function calculateTechnicalIndicators(
     });
     const lastStoch = stochResult[stochResult.length - 1];
     stochK = lastStoch?.k || null;
-
     if (stochK !== null) {
       if (stochK <= 20) momentumSignal = "Oversold";
       else if (stochK >= 80) momentumSignal = "Overbought";
@@ -183,15 +182,17 @@ export function calculateTechnicalIndicators(
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     });
+
     const lastMacd = macdResult[macdResult.length - 1];
     macdHistogram = lastMacd?.histogram || null;
+
     if (macdHistogram !== null) {
       momentumSignal = macdHistogram > 0 ? "Bullish" : "Bearish";
     }
   } else {
-    // Default RSI
     const rsiPeriod = request.strategy === "scalping" ? 7 : 14;
     const rsiResult = RSI.calculate({ period: rsiPeriod, values: closes });
+
     lastRsi = rsiResult[rsiResult.length - 1] || null;
 
     if (lastRsi !== null) {
@@ -204,7 +205,7 @@ export function calculateTechnicalIndicators(
     }
   }
 
-  // D. KALKULASI VOLUME (OBV, VWAP, MFI)
+  // D. VOLUME INDICATOR
   let obvTrend: "Accumulation" | "Distribution" | "Neutral" = "Neutral";
   let vwapValue: number | null = null;
   let mfiValue: number | null = null;
@@ -217,6 +218,7 @@ export function calculateTechnicalIndicators(
       close: closes,
       volume: volumes,
     });
+
     vwapValue = vwapResult[vwapResult.length - 1] || null;
     if (vwapValue) {
       volumeSignal = lastClose > vwapValue ? "Accumulation" : "Distribution";
@@ -229,6 +231,7 @@ export function calculateTechnicalIndicators(
       volume: volumes,
       period: 14,
     });
+
     mfiValue = mfiResult[mfiResult.length - 1] || null;
     if (mfiValue !== null) {
       if (mfiValue <= 20) volumeSignal = "Accumulation";
@@ -236,32 +239,29 @@ export function calculateTechnicalIndicators(
       else volumeSignal = mfiValue > 50 ? "Accumulation" : "Distribution";
     }
   } else {
-    // Default OBV
     const obvResult = OBV.calculate({ close: closes, volume: volumes });
     const recentObv = obvResult.slice(-5);
+
     if (recentObv.length >= 2) {
       const first = recentObv[0];
       const last = recentObv[recentObv.length - 1];
       if (last > first) obvTrend = "Accumulation";
       else if (last < first) obvTrend = "Distribution";
     }
+
     volumeSignal = obvTrend;
   }
 
-  // E. CONFLUENCE SCORE (Sinyal Rebound vs Koreksi)
+  // E. CONFLUENCE SCORE
   let bullishCount = 0;
   let bearishCount = 0;
 
   if (trendSignal === "Bullish") bullishCount++;
   if (trendSignal === "Bearish") bearishCount++;
-
-  if (momentumSignal === "Bullish" || momentumSignal === "Oversold") {
+  if (momentumSignal === "Bullish" || momentumSignal === "Oversold")
     bullishCount++;
-  }
-  if (momentumSignal === "Bearish" || momentumSignal === "Overbought") {
+  if (momentumSignal === "Bearish" || momentumSignal === "Overbought")
     bearishCount++;
-  }
-
   if (volumeSignal === "Accumulation") bullishCount++;
   if (volumeSignal === "Distribution") bearishCount++;
 
@@ -269,16 +269,29 @@ export function calculateTechnicalIndicators(
     | "Potensi Rebound (Bullish)"
     | "Potensi Koreksi (Bearish)"
     | "Netral / Konsolidasi" = "Netral / Konsolidasi";
+  if (bullishCount >= 2) consensusSignal = "Potensi Rebound (Bullish)";
+  else if (bearishCount >= 2) consensusSignal = "Potensi Koreksi (Bearish)";
 
-  if (bullishCount >= 2) {
-    consensusSignal = "Potensi Rebound (Bullish)";
-  } else if (bearishCount >= 2) {
-    consensusSignal = "Potensi Koreksi (Bearish)";
-  }
+  // F. KEY LEVELS (Support & Resistance Terdekat dari 30 Candle Terakhir)
+  const recentCandles = candles.slice(-30);
+  const validSupports = recentCandles
+    .map((c) => c.low)
+    .filter((low) => low < lastClose)
+    .sort((a, b) => b - a); // Urutkan dari terdekat ke lastClose
 
-  // F. KEY LEVELS
-  const sortedHighs = [...highs].sort((a, b) => b - a);
-  const sortedLows = [...lows].sort((a, b) => a - b);
+  const validResistances = recentCandles
+    .map((c) => c.high)
+    .filter((high) => high > lastClose)
+    .sort((a, b) => a - b); // Urutkan dari terdekat ke lastClose
+
+  const sup1 = validSupports[0] ?? lastClose * 0.97;
+  const sup2 =
+    validSupports[Math.floor(validSupports.length / 2)] ?? lastClose * 0.93;
+
+  const res1 = validResistances[0] ?? lastClose * 1.03;
+  const res2 =
+    validResistances[Math.floor(validResistances.length / 2)] ??
+    lastClose * 1.07;
 
   return {
     symbol: request.symbol,
@@ -312,11 +325,8 @@ export function calculateTechnicalIndicators(
       signal: volumeSignal,
     },
     keyLevels: {
-      support: [sortedLows[0], sortedLows[Math.floor(sortedLows.length / 4)]],
-      resistance: [
-        sortedHighs[0],
-        sortedHighs[Math.floor(sortedHighs.length / 4)],
-      ],
+      support: [sup1, sup2],
+      resistance: [res1, res2],
     },
   };
 }

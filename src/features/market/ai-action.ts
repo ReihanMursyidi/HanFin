@@ -14,13 +14,11 @@ import { calculateTechnicalIndicators } from "./technical-analysis";
 import { convertCurrency, formatCurrency } from "@/lib/format";
 import { createAI } from "../ai/instance";
 
-// ==== ANALISIS AI
 export async function analyzeMarketWithAI(
   rawRequest: AIAnalysisRequest,
   currency: Currency = "IDR",
 ): Promise<AIAnalysisResponse> {
   const request = aiAnalysisRequestSchema.parse(rawRequest);
-
   let cryptoInterval: string = "1d";
   let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
   let period1 = "2024-01-01";
@@ -43,7 +41,6 @@ export async function analyzeMarketWithAI(
     period1 = "2020-01-01";
   }
 
-  // Fetch Candlesticks Sesuai Tipe Pasar
   let candles =
     request.asset_type === "crypto"
       ? await getCryptoChartData(request.symbol, cryptoInterval, 150)
@@ -60,12 +57,10 @@ export async function analyzeMarketWithAI(
         : await getStockChartData(request.symbol, "2024-01-01", "1d");
   }
 
-  // Ambil Kurs FX & Tentukan Base Currency Asli Aset
   const fxRate = await getExchangeRateUSDIDR();
   const baseCurrency: Currency =
     request.asset_type === "crypto" ? "USD" : "IDR";
 
-  // Kalkulasi Indikator & Format Harga
   const techData = calculateTechnicalIndicators(
     candles,
     request,
@@ -78,7 +73,6 @@ export async function analyzeMarketWithAI(
     currency,
     fxRate,
   );
-
   const formattedLastClose = formatCurrency(convertedLastClose, currency);
 
   const convertedFastValue = techData.trend.fastValue
@@ -98,7 +92,6 @@ export async function analyzeMarketWithAI(
   const prompt = `
     Kamu adalah Analis Pasar Keuangan Profesional (Financial Market Predictor Agent).
     Analisis aset ${request.symbol} (${request.asset_type}) untuk metode **${request.strategy.toUpperCase()}** (Timeframe ${techData.timeframeUsed}).
-
     MATA UANG TARGET ANALISIS: **${currency}**
     Seluruh harga, batas support/resistance, dan rekomendasi targetPrices HARUS ditulis dalam mata uang **${currency}**.
 
@@ -114,15 +107,13 @@ export async function analyzeMarketWithAI(
     - Level Support Terdekat (${currency}): [${convertedSupport.join(", ")}]
     - Level Resistance Terdekat (${currency}): [${convertedResistance.join(", ")}]
 
-    ATURAN LIMIT ORDER (HARGA BELI & JUAL DALAM ${currency}):
-    1. Tentukan "entryPrice" (Harga Beli) rasional mendekati area Support terdekat atau harga penutupan terakhir (${currency}).
-    2. Tentukan "takeProfit" (Harga Jual) mendekati area Resistance terdekat (${currency}).
-    3. Tentukan "stopLoss" sedikit di bawah level Support terdekat untuk mengontrol risiko (${currency}).
-    4. Seluruh angka pada "targetPrices" harus berupa NOMOR MURNI (number) dalam mata uang ${currency} tanpa simbol/teks agar dapat diproses oleh sistem.
-
-    ATURAN FORMAT PENULISAN TEKS:
-    1. Selalu sebutkan nominal harga/level teknikal dalam teks analisis menggunakan format mata uang ${currency} (${currency === "IDR" ? "Rupiah seperti Rp 1.600.000.000" : "Dollar seperti $95,000"}).
-    2. Jelaskan makna konfluensi indikator secara alami tanpa istilah teknis kaku.
+    ATURAN KETAT TARGET PRICES & MANAJEMEN RISIKO (DALAM ${currency}):
+    1. JIKA REKOMENDASI ADALAH "Beli" ATAU "Jual":
+      - "entryPrice": Dekat area Support terdekat (Beli) atau Resistance terdekat (Jual) / penutupan terakhir (${convertedLastClose}).
+      - "stopLoss": Diletakkan presisi di bawah Support (Beli) atau di atas Resistance (Jual). Jarak risiko (entryPrice - stopLoss) HARUS REALISTIS (misal minimal 1% - 3% dari entryPrice, DILARANG memasang Stop Loss terlampau sempit/mikro).
+      - "takeProfit": WAJIB RATIO 1 : 3! Jarak keuntungan (takeProfit - entryPrice) HARUS MINIMAL 3 KALI LEBIH BESAR dari jarak risiko (entryPrice - stopLoss).
+    2. JIKA REKOMENDASI ADALAH "Wait & See" ATAU "Tahan" (misal karena R:R 1:3 tidak terpenuhi, atau pasar konsolidasi/tanpa tren):
+      - DILARANG MENERBITKAN FIELD "targetPrices"! Jangan masukkan objek "targetPrices" pada JSON response karena tidak ada setup transaksi yang aktif.
 
     Berikan jawaban JSON murni sesuai skema:
     {
