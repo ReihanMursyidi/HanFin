@@ -39,18 +39,13 @@ export default async function CryptoMarketPage() {
   const [profile, fxRate, marketAssetsRaw, chartData, transactions] =
     await Promise.all([
       getFinancialProfile(),
-
       getExchangeRateUSDIDR(),
-
       getCryptoMarketData(),
-
       getCryptoChartData(activeSymbol, "1d", 100),
-
       getMarketTransactions("crypto"),
     ]);
 
   const currency = getCurrencyFromProfile(profile);
-
   const portfolioAssets = await getPortfolioAssets("crypto", currency, fxRate);
 
   const marketAssets = marketAssetsRaw.map((asset) => ({
