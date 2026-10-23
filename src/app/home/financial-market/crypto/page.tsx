@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   title: "Pasar Kripto - Financial Market",
 
   description:
-    "Pantau harga Bitcoin dan aset kripto utama 24/7, kelola portofolio, dan dapatkan prediksi sinyal pasar AI.",
+    "Lacak pergerakan aset kripto utama secara real-time, manfaatkan analisis AI untuk proyeksi pasar, dan optimalkan portofolio Anda.",
 };
 
 export default async function CryptoMarketPage() {
@@ -83,8 +83,8 @@ export default async function CryptoMarketPage() {
           </h1>
 
           <p className="text-xs sm:text-sm md:text-base">
-            Pantau pergerakan pasar Kripto secara real-time, analisis dengan AI,
-            dan kelola portofolio.
+            Lacak pergerakan aset kripto secara real-time, dapatkan proyeksi
+            pasar dengan AI, dan optimalkan portofolio Anda.
           </p>
         </section>
       }

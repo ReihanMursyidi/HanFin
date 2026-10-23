@@ -32,8 +32,8 @@ export default function Transaction() {
             Transaction
           </h1>
           <p className="text-xs sm:text-sm md:text-base">
-            Tinjau dan kelola transaksi terbaru, aktivitas berulang, dan wawasan
-            pengeluaran Anda di satu tempat.
+            Catat dan tinjau riwayat transaksi harian, lacak alokasi
+            pengeluaran, serta jaga arus kas tetap teratur.
           </p>
         </section>
       </div>

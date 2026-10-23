@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   title: "Pasar Saham Indonesia - Financial Market",
 
   description:
-    "Pantau pergerakan Saham Indonesia & IHSG real-time, kelola portofolio, dan analisis sinyal pasar dengan AI.",
+    "Amati dinamika IHSG dan saham Indonesia secara akurat, dapatkan analisis tren dari AI, serta kelola investasi Anda.",
 };
 
 export default async function StocksMarketPage() {
@@ -79,8 +79,8 @@ export default async function StocksMarketPage() {
           </h1>
 
           <p className="text-xs sm:text-sm md:text-base">
-            Pantau pergerakan Saham Indonesia secara real-time, analisis dengan
-            AI, dan kelola portofolio.
+            Amati pergerakan IHSG dan saham Indonesia secara akurat, dapatkan
+            analisis tren dari AI, serta kelola investasi Anda.
           </p>
         </section>
       }

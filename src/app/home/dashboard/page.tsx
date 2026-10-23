@@ -14,8 +14,8 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-xs sm:text-sm md:text-base">
-          Dapatkan wawasan tentang pengeluaran Anda, lacak pengeluaran, dan
-          kelola keuangan Anda.
+          Pantau arus kas, dapatkan ringkasan wawasan keuangan, dan kelola
+          kesehatan finansial Anda secara terpusat.
         </p>
       </section>
       <DashboardContent />
