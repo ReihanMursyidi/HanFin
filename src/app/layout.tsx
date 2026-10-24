@@ -49,23 +49,26 @@ const fontVariables = cn(
 export const metadata: Metadata = {
   metadataBase: new URL("https://hanfin.app"),
   title: {
-    default: "HanFin - Autonomous AI Finance Agent",
+    default: "HanFin - Aplikasi Manajemen Keuangan & Portofolio Pasar",
     template: "%s | HanFin",
   },
   description:
-    "Kelola keuangan pribadi, lacak arus kas, dan analisis portofolio saham & kripto secara cerdas menggunakan AI.",
+    "Solusi terpusat pencatatan kas harian, pemantauan portofolio saham & kripto, serta kalkulasi rasio risiko trading 1:3 secara terdisiplin.",
   keywords: [
-    "AI Finance Agent",
     "Manajemen Keuangan",
-    "Pencatat Transaksi",
+    "Pencatat Transaksi Kas",
+    "Portofolio Saham dan Kripto",
     "Crypto Tracker",
-    "Analisis Pasar AI",
+    "Manajemen Risiko Trading",
   ],
   authors: [{ name: "Reihan Mursyidi" }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "HanFin - Autonomous AI Finance Agent",
+    title: "HanFin - Kelola Keuangan & Portofolio Multi-Aset",
     description:
-      "Kelola keuangan pribadi dan portofolio investasi Anda dengan bantuan AI.",
+      "Stop lacak keuangan manual. Gabungkan kas harian dan analisis risiko portofolio investasi dalam satu platform terpercaya.",
     url: "https://hanfin.app",
     siteName: "HanFin",
     locale: "id_ID",
@@ -73,9 +76,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hanfin - Autonomous AI Finance Agent",
+    title: "HanFin - Personal Finance & Market Portfolio",
     description:
-      "Kelola keuangan pribadi dan portofolio investasi dengan bantuan AI.",
+      "Aplikasi manajemen kas harian dan pantauan portofolio saham/kripto terintegrasi.",
   },
 };
 
@@ -86,7 +89,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="id"
       suppressHydrationWarning
       className={cn(
         "h-full scroll-smooth antialiased font-sans",

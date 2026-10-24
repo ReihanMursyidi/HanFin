@@ -21,15 +21,22 @@ export function PortfolioCard({
 }: PortfolioCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Total Nilai Portofolio Saat Ini
   const totalValue = assets.reduce(
     (acc, item) => acc + (item.current_value || 0),
     0,
   );
 
+  // Total Nominal Floating PnL
   const totalUnrealizedPnl = assets.reduce(
     (acc, item) => acc + (item.unrealized_pnl || 0),
     0,
   );
+
+  // Kalkulasi Total Modal & Persentase Floating PnL
+  const totalCost = totalValue - totalUnrealizedPnl;
+  const totalUnrealizedPnlPercent =
+    totalCost > 0 ? (totalUnrealizedPnl / totalCost) * 100 : 0;
 
   const isProfit = totalUnrealizedPnl >= 0;
 
@@ -37,7 +44,6 @@ export function PortfolioCard({
     <>
       <Card className="w-full min-w-0 overflow-hidden shadow-sm border-primary/20 bg-linear-to-br from-background to-muted/20">
         <CardContent className="flex flex-col justify-between h-full gap-4 p-4 sm:p-5 min-w-0">
-          {/* Top Section: Kunci flex parent dengan min-w-0, gap-2, w-full */}
           <div className="flex items-start justify-between gap-2 min-w-0 w-full">
             <div className="space-y-1 min-w-0 flex-1">
               <p className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium tracking-wider block truncate">
@@ -60,7 +66,6 @@ export function PortfolioCard({
             </Button>
           </div>
 
-          {/* Bottom Section: Tambahkan truncate & min-w-0 pada PnL */}
           <div className="flex items-center justify-between gap-2 pt-2 text-xs border-t min-w-0 w-full">
             <span className="text-muted-foreground shrink-0">Floating PnL</span>
             <div
@@ -77,7 +82,9 @@ export function PortfolioCard({
                 {isProfit ? "+" : ""}
                 {currency === "IDR"
                   ? convertToIDR(totalUnrealizedPnl)
-                  : `$${totalUnrealizedPnl.toFixed(2)}`}
+                  : `$${totalUnrealizedPnl.toFixed(2)}`}{" "}
+                ({isProfit ? "+" : ""}
+                {totalUnrealizedPnlPercent.toFixed(2)}%)
               </span>
             </div>
           </div>
