@@ -1,6 +1,3 @@
-"use client";
-
-import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -23,26 +20,11 @@ import {
   LANDING_FAQS,
   JSON_LD_SCHEMA,
 } from "@/constants/landing-data";
+import { getCurrentUser } from "@/features/auth/action";
 
-// Listener kosong karena storage browser diakses secara opsional pada mount
-const emptySubscribe = () => () => {};
-
-/**
- * Custom Hook aman dari Hydration Mismatch untuk membaca status login client
- */
-function useIsLoggedIn(): boolean {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () =>
-      typeof window !== "undefined" &&
-      (localStorage.getItem("is_logged_in") === "true" ||
-        document.cookie.includes("is_logged_in=true")),
-    () => false, // Snapshot fallback saat SSR
-  );
-}
-
-export default function LandingPage() {
-  const isLoggedIn = useIsLoggedIn();
+export default async function LandingPage() {
+  const user = await getCurrentUser();
+  const isLoggedIn = !!user;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -62,6 +44,7 @@ export default function LandingPage() {
             <span className="font-bold text-lg tracking-tight">HanFin</span>
           </div>
 
+          {/* Tombol Navbar Dinamis */}
           <div className="flex items-center">
             {isLoggedIn ? (
               <Button size="sm" asChild className="gap-1.5 font-medium">
