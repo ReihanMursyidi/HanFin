@@ -49,7 +49,7 @@ const fontVariables = cn(
 export const metadata: Metadata = {
   metadataBase: new URL("https://hanfin.app"),
   title: {
-    default: "HanFin - Aplikasi Manajemen Keuangan & Portofolio Pasar",
+    default: "HanFin - Aplikasi Manajemen Keuangan & Portofolio",
     template: "%s | HanFin",
   },
   description:
