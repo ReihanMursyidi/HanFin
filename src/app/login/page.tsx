@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Lock, Mail, ShieldCheck } from "lucide-react";
+import { loginUser } from "@/features/auth/action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,29 +14,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
 
     try {
-      // Simulasi autentikasi
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const result = await loginUser({ email, password });
 
-      // Simpan status autentikasi ke cookie & localStorage
-      document.cookie = "is_logged_in=true; path=/; max-age=86400";
-      localStorage.setItem("is_logged_in", "true");
+      if (!result.success) {
+        setError(result.message);
+        setIsLoading(false);
+        return;
+      }
 
-      // Gunakan router Next.js untuk pengalihan halaman internal
-      router.push("/home/dashboard");
-    } catch (error) {
-      console.error("Login Error:", error);
+      router.replace("/home/dashboard");
+      router.refresh();
+    } catch (err) {
+      console.error("Login Error:", err);
+      setError("Terjadi kesalahan. Silakan coba lagi.");
       setIsLoading(false);
     }
   };
@@ -116,6 +121,15 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
+
+              {error && (
+                <p
+                  role="alert"
+                  className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                >
+                  {error}
+                </p>
+              )}
 
               <Button
                 type="submit"
