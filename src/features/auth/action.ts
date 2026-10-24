@@ -3,25 +3,39 @@
 import { createClient } from "@/lib/supabase/server";
 import { authSchema, type AuthInput } from "./schema";
 
-export async function loginUser(data: AuthInput) {
-  const validated = authSchema.parse(data);
+export type LoginResult =
+  | { success: true }
+  | { success: false; message: string };
+
+export async function loginUser(data: AuthInput): Promise<LoginResult> {
+  const parsed = authSchema.safeParse(data);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: validated.email,
-    password: validated.password,
+    email: parsed.data.email,
+    password: parsed.data.password,
   });
 
   if (error) {
     console.error("[Auth Login Error]:", error.message);
 
-    if (error.message.includes("Invalid login credentials")) {
-      throw new Error("Email or password is incorrect.");
-    }
-    throw new Error(error.message);
+    return {
+      success: false,
+      message: error.message.includes("Invalid login credentials")
+        ? "Email atau kata sandi salah."
+        : "Gagal masuk. Silakan coba lagi.",
+    };
   }
 
-  return { success: true, message: "Login success!" };
+  return { success: true };
 }
 
 export async function registerUser(data: AuthInput) {

@@ -44,7 +44,8 @@ export const supabaseProxy = async (request: NextRequest) => {
    } = await supabase.auth.getUser();
 
    const isProtectedRoute = request.nextUrl.pathname.startsWith('/home');
-   const isAuthRoute = request.nextUrl.pathname === '/';
+   const isAuthRoute =
+      request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login';
 
    if (!user && isProtectedRoute) {
       const url = request.nextUrl.clone();
