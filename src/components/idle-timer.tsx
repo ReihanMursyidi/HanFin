@@ -20,11 +20,13 @@ const ACTIVE_EVENTS = [
 ] as const;
 
 const THROTTLE_DELAY_MS = 1000;
+const DEFAULT_TIMEOUT_24_HOURS = 24 * 60;
 
-export function IdleTimer({ timeoutMinutes = 15 }: IdleTimerProps) {
+export function IdleTimer({
+  timeoutMinutes = DEFAULT_TIMEOUT_24_HOURS,
+}: IdleTimerProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-
   const lastActivityRef = useRef<number>(0);
   const isLoggingOutRef = useRef<boolean>(false);
 

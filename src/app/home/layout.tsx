@@ -11,7 +11,7 @@ export default function HomeLayout({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider className="h-svh overflow-hidden">
-        <IdleTimer timeoutMinutes={15} />
+        <IdleTimer timeoutMinutes={1440} />
         <ProfileGuard />
 
         <AppSidebar />

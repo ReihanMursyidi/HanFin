@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ArrowRight,
   ShieldCheck,
@@ -11,10 +12,10 @@ import {
   BookOpen,
   HelpCircle,
   MapPin,
-  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ModeToggle } from "@/components/mode-toggle";
 import {
   LANDING_ARTICLES,
   LANDING_FAQS,
@@ -24,7 +25,11 @@ import { getCurrentUser } from "@/features/auth/action";
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
-  const isLoggedIn = !!user;
+
+  // Pengalihan otomatis jika pengguna masih memiliki sesi aktif
+  if (user) {
+    redirect("/home/dashboard");
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -37,27 +42,21 @@ export default async function LandingPage() {
       {/* Header Navigation */}
       <header className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-              H
-            </div>
-            <span className="font-bold text-lg tracking-tight">HanFin</span>
-          </div>
+          {/* Logo Teks "HanFin" */}
+          <Link
+            href="/"
+            className="flex items-center font-bold text-xl sm:text-2xl tracking-tight hover:opacity-90 transition-opacity select-none"
+          >
+            <span className="text-black dark:text-white">Han</span>
+            <span className="text-primary">Fin</span>
+          </Link>
 
-          {/* Tombol Navbar Dinamis */}
-          <div className="flex items-center">
-            {isLoggedIn ? (
-              <Button size="sm" asChild className="gap-1.5 font-medium">
-                <Link href="/home/dashboard">
-                  <LayoutDashboard className="size-4" />
-                  Dashboard
-                </Link>
-              </Button>
-            ) : (
-              <Button size="sm" asChild>
-                <Link href="/login">Sign In</Link>
-              </Button>
-            )}
+          {/* Action Navbar: Mode Toggle & Auth Button */}
+          <div className="flex items-center gap-2">
+            <ModeToggle />
+            <Button size="lg" asChild>
+              <Link href="/login">Sign In</Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -76,14 +75,14 @@ export default async function LandingPage() {
 
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
             HanFin menggabungkan pencatatan kas harian, pemantauan portofolio
-            saham & kripto, serta kalkulasi rasio risiko trading 1:3 secara
-            terdisiplin dalam satu platform terpadu.
+            saham & kripto, serta kalkulasi rasio risiko trading secara disiplin
+            dalam satu platform terpadu.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Button size="lg" className="w-full sm:w-auto px-8" asChild>
-              <Link href={isLoggedIn ? "/home/dashboard" : "/login"}>
-                Mulai Kelola Keuangan <ArrowRight className="ml-2 size-4" />
+            <Button size="lg" className="w-full sm:w-auto px-4" asChild>
+              <Link href="/login">
+                Mulai Kelola Keuangan <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button
@@ -216,7 +215,7 @@ export default async function LandingPage() {
                   <div className="text-[11px] text-muted-foreground pt-2 border-t flex justify-between items-center">
                     <span>{article.date}</span>
                     <span className="font-semibold text-primary hover:underline cursor-pointer">
-                      Baca Selengkapnya →
+                      Baca Selengkapnya
                     </span>
                   </div>
                 </CardContent>
@@ -291,7 +290,7 @@ export default async function LandingPage() {
                     Lokasi Operasional
                   </p>
                   <p className="text-muted-foreground">
-                    Depok, Jawa Barat, Indonesia
+                    Tangerang Selatan, Banten, Indonesia
                   </p>
                 </div>
               </div>
@@ -309,9 +308,7 @@ export default async function LandingPage() {
               Mulai kelola kas harian serta portofolio Anda secara terstruktur.
             </p>
             <Button size="lg" variant="secondary" asChild>
-              <Link href={isLoggedIn ? "/home/dashboard" : "/login"}>
-                {isLoggedIn ? "Buka Dashboard" : "Sign In"}
-              </Link>
+              <Link href="/login">Sign In</Link>
             </Button>
           </div>
         </section>
@@ -321,10 +318,13 @@ export default async function LandingPage() {
       <footer className="border-t py-10 px-4 bg-background text-xs text-muted-foreground">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="size-6 rounded bg-primary text-primary-foreground font-bold flex items-center justify-center text-xs">
-              H
-            </div>
-            <span className="font-bold text-foreground">HanFin</span>
+            <Link
+              href="/"
+              className="flex items-center font-bold text-sm sm:text-base tracking-tight hover:opacity-90 transition-opacity select-none"
+            >
+              <span className="text-black dark:text-white">Han</span>
+              <span className="text-primary">Fin</span>
+            </Link>
             <span>— Finance & Market Intelligence</span>
           </div>
           <div className="flex items-center gap-6 text-muted-foreground">
