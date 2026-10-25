@@ -9,21 +9,23 @@ import {
   CheckCircle2,
   Lock,
   Mail,
-  BookOpen,
   HelpCircle,
   MapPin,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ModeToggle } from "@/components/mode-toggle";
 import { AnimatedBlobBackground } from "@/components/landing/animated-blob-background";
 import { ScrollToTop } from "@/components/landing/scroll-to-top";
-import {
-  LANDING_ARTICLES,
-  LANDING_FAQS,
-  JSON_LD_SCHEMA,
-} from "@/constants/landing-data";
+import { TutorialSection } from "@/app/_components/tutorial-section";
+
 import { getCurrentUser } from "@/features/auth/action";
+import {
+  FAQItem,
+  JSON_LD_SCHEMA,
+  LANDING_FAQS,
+} from "@/constants/landing-data";
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
@@ -31,6 +33,8 @@ export default async function LandingPage() {
   if (user) {
     redirect("/home/dashboard");
   }
+
+  const isLoggedIn = !!user;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground flex flex-col overflow-x-hidden">
@@ -43,9 +47,10 @@ export default async function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD_SCHEMA) }}
       />
 
-      {/* Fixed Header Navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background/50 backdrop-blur">
+      {/* Header Navigation (Sembunyi otomatis ketika modal-open aktif) */}
+      <header className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300 in-[.modal-open]:hidden">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          {/* Logo Teks "HanFin" */}
           <Link
             href="/"
             className="flex items-center font-bold text-xl sm:text-2xl tracking-tight hover:opacity-90 transition-opacity select-none"
@@ -54,16 +59,26 @@ export default async function LandingPage() {
             <span className="text-primary">Fin</span>
           </Link>
 
+          {/* Action Navbar */}
           <div className="flex items-center gap-2">
             <ModeToggle />
-            <Button size="lg" asChild>
-              <Link href="/login">Sign In</Link>
-            </Button>
+            {isLoggedIn ? (
+              <Button size="lg" asChild className="gap-1.5 font-medium">
+                <Link href="/home/dashboard">
+                  <LayoutDashboard className="size-4" />
+                  Dashboard
+                </Link>
+              </Button>
+            ) : (
+              <Button size="lg" asChild>
+                <Link href="/login">Sign In</Link>
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Main Content dengan Padding-Top agar tidak tertutup Fixed Header */}
+      {/* Main Content */}
       <main className="relative z-10 flex-1 pt-16">
         {/* Hero Section */}
         <section className="py-16 sm:py-20 px-4 max-w-4xl mx-auto text-center space-y-6">
@@ -94,7 +109,7 @@ export default async function LandingPage() {
               className="w-full sm:w-auto bg-background/50 backdrop-blur-sm"
               asChild
             >
-              <Link href="#edukasi">Baca Artikel & Panduan</Link>
+              <Link href="#edukasi">Lihat Tutorial Fitur</Link>
             </Button>
           </div>
 
@@ -113,7 +128,7 @@ export default async function LandingPage() {
         {/* Features Section */}
         <section
           id="fitur"
-          className="py-16 bg-muted/30 border-y px-4 backdrop-blur-xs"
+          className="scroll-mt-36 sm:scroll-mt-40 py-16 bg-muted/30 border-y px-4 backdrop-blur-xs"
         >
           <div className="max-w-6xl mx-auto space-y-12">
             <div className="text-center space-y-3 max-w-2xl mx-auto">
@@ -177,58 +192,8 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* Section Artikel */}
-        <section
-          id="edukasi"
-          className="py-16 px-4 max-w-6xl mx-auto space-y-10"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-                <BookOpen className="size-4" /> Pusat Edukasi & Literasi
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Panduan & Artikel Keuangan Terbaru
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-muted-foreground max-w-md">
-              Materi praktis seputar manajemen kas, analisis rasio risiko pasar,
-              dan strategi alokasi portofolio.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {LANDING_ARTICLES.map((article) => (
-              <Card
-                key={article.slug}
-                className="border bg-background/80 backdrop-blur-sm flex flex-col justify-between hover:border-primary/50 transition-colors"
-              >
-                <CardHeader className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-                      {article.category}
-                    </span>
-                    <span>{article.readTime}</span>
-                  </div>
-                  <CardTitle className="text-base font-bold leading-snug line-clamp-2">
-                    {article.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                    {article.excerpt}
-                  </p>
-                  <div className="text-[11px] text-muted-foreground pt-2 border-t flex justify-between items-center">
-                    <span>{article.date}</span>
-                    <span className="font-semibold text-primary hover:underline cursor-pointer">
-                      Baca Selengkapnya
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+        {/* Section Tutorial */}
+        <TutorialSection />
 
         {/* Section FAQ */}
         <section className="py-16 bg-muted/20 border-t px-4">
@@ -243,7 +208,7 @@ export default async function LandingPage() {
             </div>
 
             <div className="space-y-4">
-              {LANDING_FAQS.map((faq, index) => (
+              {LANDING_FAQS.map((faq: FAQItem, index: number) => (
                 <div
                   key={index}
                   className="border rounded-xl p-5 bg-background/80 backdrop-blur-sm space-y-2"
@@ -261,7 +226,10 @@ export default async function LandingPage() {
         </section>
 
         {/* Transparansi Kontak */}
-        <section id="kontak" className="py-16 px-4 max-w-4xl mx-auto">
+        <section
+          id="kontak"
+          className="scroll-mt-36 sm:scroll-mt-40 py-16 px-4 max-w-4xl mx-auto"
+        >
           <div className="border rounded-2xl p-6 sm:p-8 bg-background/80 backdrop-blur-sm space-y-6">
             <div className="space-y-2">
               <h3 className="font-bold text-lg sm:text-xl">
@@ -296,7 +264,7 @@ export default async function LandingPage() {
                     Lokasi Operasional
                   </p>
                   <p className="text-muted-foreground">
-                    Tangerang Selatan, Banten, Indonesia
+                    Depok, Jawa Barat, Indonesia
                   </p>
                 </div>
               </div>
@@ -341,13 +309,16 @@ export default async function LandingPage() {
               Kontak
             </a>
             <Link href="#edukasi" className="hover:text-foreground">
-              Artikel
+              Tutorial
             </Link>
             <Link href="#fitur" className="hover:text-foreground">
               Fitur
             </Link>
           </div>
-          <p>© 2026 HanFin. Hak Cipta Dilindungi Undang-Undang.</p>
+          <p>
+            © {new Date().getFullYear()} HanFin. Hak Cipta Dilindungi
+            Undang-Undang.
+          </p>
         </div>
       </footer>
 
