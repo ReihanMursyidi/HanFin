@@ -1,48 +1,7 @@
-export interface Article {
-  slug: string;
-  title: string;
-  category: string;
-  readTime: string;
-  excerpt: string;
-  date: string;
-}
-
 export interface FAQItem {
   question: string;
   answer: string;
 }
-
-export const LANDING_ARTICLES: Article[] = [
-  {
-    slug: "mengapa-risk-to-reward-1-3-kunci-survive-di-pasar",
-    title:
-      "Mengapa Rasio Risk-to-Reward 1:3 Menjadi Kunci Konsistensi Trading?",
-    category: "Manajemen Risiko",
-    readTime: "4 menit baca",
-    excerpt:
-      "Banyak trader gagal bukan karena salah menganalisis, melainkan karena rasio kerugian yang tidak terukur. Pelajari kalkulasi matematika di balik R:R 1:3.",
-    date: "12 Februari 2026",
-  },
-  {
-    slug: "panduan-menggabungkan-portofolio-saham-dan-kripto",
-    title: "Cara Mengonsolidasikan Portofolio Multi-Aset Tanpa Pusing",
-    category: "Portofolio",
-    readTime: "5 menit baca",
-    excerpt:
-      "Lacak pergerakan aset Saham dan Kripto secara bersamaan. Hindari kesalahan umum saat menghitung Floating PnL terkonversi IDR/USD.",
-    date: "08 Februari 2026",
-  },
-  {
-    slug: "stop-pencatatan-kas-manual-di-spreadsheet",
-    title:
-      "3 Alasan Mengapa Pencatatan Kas Manual Sering Terhenti di Tengah Jalan",
-    category: "Manajemen Kas",
-    readTime: "3 menit baca",
-    excerpt:
-      "Evaluasi kebiasaan financial tracking Anda. Temukan cara menyederhanakan alur pencatatan kas agar tetap konsisten bulanan.",
-    date: "01 Februari 2026",
-  },
-];
 
 export const LANDING_FAQS: FAQItem[] = [
   {
@@ -93,7 +52,7 @@ export const JSON_LD_SCHEMA = {
     },
     {
       "@type": "FAQPage",
-      mainEntity: LANDING_FAQS.map((faq) => ({
+      mainEntity: LANDING_FAQS.map((faq: FAQItem) => ({
         "@type": "Question",
         name: faq.question,
         acceptedAnswer: {
