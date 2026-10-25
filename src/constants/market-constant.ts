@@ -87,6 +87,24 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
     name: "Hyperliquid",
     isTradeable: true,
   },
+  {
+    symbol: "ONDOUSDT",
+    shortSymbol: "ONDO",
+    name: "Ondo",
+    isTradeable: true,
+  },
+  {
+    symbol: "PUMPUSDT",
+    shortSymbol: "PUMP",
+    name: "Pump.fun",
+    isTradeable: true,
+  },
+  {
+    symbol: "ASTERUSDT",
+    shortSymbol: "ASTER",
+    name: "Aster",
+    isTradeable: true,
+  },
 ];
 
 export const BINANCE_ENDPOINTS = [

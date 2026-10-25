@@ -14,7 +14,11 @@ interface UseLiveMarketDataProps {
   intervalMs?: number;
 }
 
-const emptySubscribe = () => () => {};
+const emptySubscribe = () => {
+  return () => {
+    // No-op: tidak ada cleanup listener yang perlu dilepas
+  };
+};
 
 function useIsMounted(): boolean {
   return useSyncExternalStore(
