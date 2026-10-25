@@ -22,7 +22,7 @@ export const LANDING_FEATURES: LandingFeature[] = [
     title: "Dashboard Keuangan Terpusat",
     icon: LayoutDashboard,
     description:
-      "Pantau kondisi keuangan Anda dalam satu tampilan: saldo terkini, arus kas masuk dan keluar, serta tren pengeluaran dari waktu ke waktu — tanpa perlu membuka spreadsheet manual.",
+      "Pantau kondisi keuangan Anda dalam satu tampilan: saldo terkini, arus kas masuk dan keluar, serta tren pengeluaran dari waktu ke waktu tanpa perlu membuka spreadsheet manual.",
     highlights: [
       "Ringkasan saldo & arus kas real-time",
       "Grafik tren pemasukan vs pengeluaran",
@@ -31,14 +31,14 @@ export const LANDING_FEATURES: LandingFeature[] = [
   },
   {
     id: "wizard-transaksi",
-    title: "Catat Transaksi dengan AI Wizard",
+    title: "Catat Transaksi dengan AI Wizard Input",
     icon: Mic,
     description:
-      'Cukup ketik atau ucapkan transaksi dalam bahasa sehari-hari, misalnya "catat makan siang 25 ribu", dan AI akan mengisi kategori, nominal, serta tanggalnya secara otomatis. Bisa juga memindai struk belanja langsung dari foto.',
+      "Fitur untuk menginput data transaksi tanpa harus mengisi form secara manual. Tersedia di halaman Dashboard, Transaction, dan Financial Market untuk kemudahan pencatatan berbasis perintah teks maupun suara.",
     highlights: [
-      "Input lewat teks atau suara, bahasa natural",
-      "Kategori & nominal terisi otomatis",
-      "Pindai struk belanja jadi transaksi",
+      "Dapat diakses di Dashboard, Transaction, & Financial Market",
+      "Input data otomatis tanpa isi form manual",
+      "Mendukung teks & perintah suara bahasa sehari-hari",
     ],
   },
   {
@@ -70,19 +70,19 @@ export const LANDING_FEATURES: LandingFeature[] = [
     title: "Pasar Saham & Kripto Real-Time",
     icon: TrendingUp,
     description:
-      "Pantau pergerakan IHSG, saham-saham Indonesia, dan aset kripto populer secara real-time. Kelola portofolio dengan perhitungan harga rata-rata otomatis, dan catat transaksi beli/jual cukup lewat perintah natural.",
+      "Pantau pergerakan IHSG, saham-saham Indonesia, dan aset kripto populer secara real-time. Kelola portofolio dengan perhitungan harga rata-rata otomatis, dan catat transaksi beli/jual lewat Wizard Input.",
     highlights: [
       "Data saham IHSG & kripto real-time",
       "Portofolio dengan harga rata-rata otomatis",
-      "Transaksi beli/jual lewat perintah natural",
+      "Input cepat beli/jual tanpa form manual",
     ],
   },
   {
     id: "ai-predictor",
-    title: "AI Predictor — Analisis Teknikal",
+    title: "AI Predictor – Analisis Teknikal",
     icon: Activity,
     description:
-      "Dapatkan analisis berbasis indikator teknikal seperti SMA, EMA, ADX, RSI, MACD, Stochastic, OBV, dan VWAP, disesuaikan dengan strategi trading Anda — mulai dari scalping harian hingga investasi jangka panjang.",
+      "Dapatkan analisis berbasis indikator teknikal seperti SMA, EMA, ADX, RSI, MACD, Stochastic, OBV, dan VWAP, disesuaikan dengan strategi trading Anda – mulai dari scalping harian hingga investasi jangka panjang.",
     highlights: [
       "Indikator tren, momentum, dan volume",
       "Rekomendasi Beli / Jual / Tahan dari AI",
