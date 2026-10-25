@@ -134,7 +134,7 @@ export function AiPredictorCard({
       <CardHeader className="px-4 pt-4 pb-3 border-b shrink-0">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold sm:text-base">
           <Sparkles className="size-4 text-primary shrink-0" />
-          <span>AI Market Predictor Agent</span>
+          <span>HanFin Market Pulse</span>
         </CardTitle>
       </CardHeader>
 
@@ -145,7 +145,8 @@ export function AiPredictorCard({
             htmlFor="select-asset-predict"
             className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1 mb-1"
           >
-            <Search className="size-3 text-primary" /> Pilih Aset Diprediksi
+            <Search className="size-3 text-primary" /> Pilih Aset untuk
+            Dianalisa
           </label>
 
           <Popover open={openSearch} onOpenChange={setOpenSearch}>
