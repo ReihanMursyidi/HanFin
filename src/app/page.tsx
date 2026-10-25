@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ModeToggle } from "@/components/mode-toggle";
+import { AnimatedBlobBackground } from "@/components/landing/animated-blob-background";
+import { ScrollToTop } from "@/components/landing/scroll-to-top";
 import {
   LANDING_ARTICLES,
   LANDING_FAQS,
@@ -26,23 +28,24 @@ import { getCurrentUser } from "@/features/auth/action";
 export default async function LandingPage() {
   const user = await getCurrentUser();
 
-  // Pengalihan otomatis jika pengguna masih memiliki sesi aktif
   if (user) {
     redirect("/home/dashboard");
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="relative min-h-screen bg-background text-foreground flex flex-col overflow-x-hidden">
+      {/* Background Animated Blobs */}
+      <AnimatedBlobBackground />
+
       {/* Structured Data (JSON-LD) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD_SCHEMA) }}
       />
 
-      {/* Header Navigation */}
-      <header className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-50">
+      {/* Fixed Header Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background/50 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo Teks "HanFin" */}
           <Link
             href="/"
             className="flex items-center font-bold text-xl sm:text-2xl tracking-tight hover:opacity-90 transition-opacity select-none"
@@ -51,7 +54,6 @@ export default async function LandingPage() {
             <span className="text-primary">Fin</span>
           </Link>
 
-          {/* Action Navbar: Mode Toggle & Auth Button */}
           <div className="flex items-center gap-2">
             <ModeToggle />
             <Button size="lg" asChild>
@@ -61,10 +63,11 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1">
+      {/* Main Content dengan Padding-Top agar tidak tertutup Fixed Header */}
+      <main className="relative z-10 flex-1 pt-16">
         {/* Hero Section */}
         <section className="py-16 sm:py-20 px-4 max-w-4xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-muted/50 text-xs sm:text-sm font-medium">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-background/60 backdrop-blur-sm text-xs sm:text-sm font-medium">
             <ShieldCheck className="size-4 text-emerald-500" />
             <span>Manajemen Keuangan Transparan & Terukur</span>
           </div>
@@ -88,7 +91,7 @@ export default async function LandingPage() {
             <Button
               size="lg"
               variant="outline"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto bg-background/50 backdrop-blur-sm"
               asChild
             >
               <Link href="#edukasi">Baca Artikel & Panduan</Link>
@@ -108,7 +111,10 @@ export default async function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="fitur" className="py-16 bg-muted/30 border-y px-4">
+        <section
+          id="fitur"
+          className="py-16 bg-muted/30 border-y px-4 backdrop-blur-xs"
+        >
           <div className="max-w-6xl mx-auto space-y-12">
             <div className="text-center space-y-3 max-w-2xl mx-auto">
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -121,7 +127,7 @@ export default async function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="border-muted bg-background">
+              <Card className="border-muted bg-background/80 backdrop-blur-sm">
                 <CardContent className="pt-6 space-y-3">
                   <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                     <Wallet className="size-5" />
@@ -137,7 +143,7 @@ export default async function LandingPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-muted bg-background">
+              <Card className="border-muted bg-background/80 backdrop-blur-sm">
                 <CardContent className="pt-6 space-y-3">
                   <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                     <LineChart className="size-5" />
@@ -153,7 +159,7 @@ export default async function LandingPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-muted bg-background">
+              <Card className="border-muted bg-background/80 backdrop-blur-sm">
                 <CardContent className="pt-6 space-y-3">
                   <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                     <Bot className="size-5" />
@@ -195,7 +201,7 @@ export default async function LandingPage() {
             {LANDING_ARTICLES.map((article) => (
               <Card
                 key={article.slug}
-                className="border bg-background flex flex-col justify-between hover:border-primary/50 transition-colors"
+                className="border bg-background/80 backdrop-blur-sm flex flex-col justify-between hover:border-primary/50 transition-colors"
               >
                 <CardHeader className="space-y-2">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -240,7 +246,7 @@ export default async function LandingPage() {
               {LANDING_FAQS.map((faq, index) => (
                 <div
                   key={index}
-                  className="border rounded-xl p-5 bg-background space-y-2"
+                  className="border rounded-xl p-5 bg-background/80 backdrop-blur-sm space-y-2"
                 >
                   <h3 className="font-bold text-sm sm:text-base">
                     {faq.question}
@@ -256,7 +262,7 @@ export default async function LandingPage() {
 
         {/* Transparansi Kontak */}
         <section id="kontak" className="py-16 px-4 max-w-4xl mx-auto">
-          <div className="border rounded-2xl p-6 sm:p-8 bg-background space-y-6">
+          <div className="border rounded-2xl p-6 sm:p-8 bg-background/80 backdrop-blur-sm space-y-6">
             <div className="space-y-2">
               <h3 className="font-bold text-lg sm:text-xl">
                 Tentang Tim Pengembang HanFin
@@ -315,7 +321,7 @@ export default async function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-10 px-4 bg-background text-xs text-muted-foreground">
+      <footer className="relative z-10 border-t py-10 px-4 bg-background/80 backdrop-blur-sm text-xs text-muted-foreground">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <Link
@@ -341,12 +347,12 @@ export default async function LandingPage() {
               Fitur
             </Link>
           </div>
-          <p>
-            © {new Date().getFullYear()} HanFin. Hak Cipta Dilindungi
-            Undang-Undang.
-          </p>
+          <p>© 2026 HanFin. Hak Cipta Dilindungi Undang-Undang.</p>
         </div>
       </footer>
+
+      {/* Tombol Auto Scroll Up */}
+      <ScrollToTop />
     </div>
   );
 }
