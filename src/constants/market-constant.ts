@@ -32,11 +32,24 @@ export const STOCK_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
+    symbol: "BBRI.JK",
+    shortSymbol: "BBRI",
+    name: "Bank Rakyat Indonesia",
+    isTradeable: true,
+  },
+  {
     symbol: "DCII.JK",
     shortSymbol: "DCII",
     name: "DCI Indonesia",
     isTradeable: true,
   },
+  {
+    symbol: "BMRI.JK",
+    shortSymbol: "BMRI",
+    name: "Bank Mandiri",
+    isTradeable: true,
+  },
+
   {
     symbol: "BREN.JK",
     shortSymbol: "BREN",
@@ -56,15 +69,9 @@ export const STOCK_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
-    symbol: "BBRI.JK",
-    shortSymbol: "BBRI",
-    name: "Bank Rakyat Indonesia",
-    isTradeable: true,
-  },
-  {
-    symbol: "BMRI.JK",
-    shortSymbol: "BMRI",
-    name: "Bank Mandiri",
+    symbol: "BYAN.JK",
+    shortSymbol: "BYAN",
+    name: "Bayan Resources Tbk.",
     isTradeable: true,
   },
 ];
@@ -149,6 +156,8 @@ export function getAssetLogoUrl(symbol: string, assetType: string): string {
     BREN: "https://s3-symbol-logo.tradingview.com/barito-pacific--big.svg",
     TLKM: "https://s3-symbol-logo.tradingview.com/telekom-indonesia--big.svg",
     ASII: "https://s3-symbol-logo.tradingview.com/astra-international--big.svg",
+    BBRI: "https://s3-symbol-logo.tradingview.com/bank-rakyat-indonesia--big.svg",
+    BMRI: "https://s3-symbol-logo.tradingview.com/bank-mandiri--big.svg",
   };
 
   return stockLogos[cleanSymbol] || "";
