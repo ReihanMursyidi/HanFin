@@ -370,7 +370,7 @@ export function AiPredictorCard({
                 <div className="space-y-0.5 min-w-0">
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
                     <ArrowDownCircle className="size-3 text-emerald-500 shrink-0" />
-                    <span>Beli</span>
+                    <span>Entry</span>
                   </span>
                   <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
                     {formatCurrency(analysis.targetPrices.entryPrice, currency)}
