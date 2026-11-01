@@ -80,8 +80,9 @@ export function MarketAssetsTable({
   activeSymbol,
   onSelectSymbol,
 }: MarketAssetsTableProps) {
-  // Hanya ambil 6 aset utama untuk tabel
-  const displayAssets = assets.slice(0, 6);
+  const displayAssets = [...assets]
+    .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
+    .slice(0, 6);
 
   return (
     <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
