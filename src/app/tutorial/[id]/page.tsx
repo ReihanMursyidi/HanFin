@@ -13,6 +13,7 @@ import {
 import { LANDING_TUTORIALS } from "@/constants/landing-tutorials";
 import { LandingHeader } from "@/app/_components/landing-header";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/features/auth/action";
 
 interface TutorialPageProps {
   params: Promise<{ id: string }>;
@@ -41,7 +42,7 @@ export async function generateMetadata({
 export default async function TutorialArticlePage({
   params,
 }: TutorialPageProps) {
-  const { id } = await params;
+  const [{ id }, user] = await Promise.all([params, getCurrentUser()]);
   const tutorial = getTutorial(id);
 
   if (!tutorial) {
@@ -50,7 +51,7 @@ export default async function TutorialArticlePage({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <LandingHeader />
+      <LandingHeader isLoggedIn={user !== null} />
       <main className="px-4 pt-24 pb-16 sm:pt-28">
         <article className="mx-auto max-w-3xl">
           <Link

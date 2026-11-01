@@ -92,7 +92,7 @@ export default function RootLayout({
       lang="id"
       suppressHydrationWarning
       className={cn(
-        "h-full scroll-smooth antialiased font-sans",
+        "h-full scroll-smooth antialiased font-sans custom-scrollbar",
         fontVariables,
       )}
     >

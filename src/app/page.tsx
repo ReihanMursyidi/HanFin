@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   ArrowRight,
   ShieldCheck,
@@ -28,10 +27,7 @@ import {
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
-
-  if (user) {
-    redirect("/home/dashboard");
-  }
+  const isLoggedIn = user !== null;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground flex flex-col overflow-x-hidden">
@@ -44,7 +40,7 @@ export default async function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD_SCHEMA) }}
       />
 
-      <LandingHeader />
+      <LandingHeader isLoggedIn={isLoggedIn} />
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 pt-16">
@@ -67,8 +63,9 @@ export default async function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button size="lg" className="w-full sm:w-auto px-4" asChild>
-              <Link href="/login">
-                Mulai Kelola Keuangan <ArrowRight className="size-4" />
+              <Link href={isLoggedIn ? "/home/dashboard" : "/login"}>
+                {isLoggedIn ? "Buka Dashboard" : "Mulai Kelola Keuangan"}{" "}
+                <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button
@@ -90,6 +87,64 @@ export default async function LandingPage() {
               <Lock className="size-3.5 text-emerald-500" /> Enkripsi Data
               Pribadi
             </span>
+          </div>
+        </section>
+
+        <section
+          id="alur"
+          className="scroll-mt-24 border-b px-4 py-16 sm:scroll-mt-28"
+        >
+          <div className="mx-auto max-w-6xl space-y-10">
+            <div className="mx-auto max-w-2xl space-y-3 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Mulai dengan mudah
+              </p>
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                Satu alur untuk memahami kondisi keuangan
+              </h2>
+              <p className="text-sm text-muted-foreground sm:text-base">
+                Catat aktivitas, lihat ringkasannya, lalu gunakan informasi
+                tersebut untuk merencanakan langkah berikutnya.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3">
+              {[
+                {
+                  number: "01",
+                  title: "Catat aktivitas",
+                  description:
+                    "Masukkan transaksi kas dan aset secara manual atau gunakan Wizard Input untuk membantu proses pencatatan.",
+                },
+                {
+                  number: "02",
+                  title: "Pantau ringkasan",
+                  description:
+                    "Tinjau arus kas, portofolio saham dan kripto, serta perubahan nilai aset dari dashboard.",
+                },
+                {
+                  number: "03",
+                  title: "Pelajari pilihan",
+                  description:
+                    "Gunakan Hanbot untuk edukasi finansial dan Market Pulse untuk melihat analisis teknikal pasar.",
+                },
+              ].map((step) => (
+                <Card
+                  key={step.number}
+                  className="border-muted bg-background/80 backdrop-blur-sm"
+                >
+                  <CardContent className="space-y-3 pt-6">
+                    <span className="text-sm font-bold text-primary">
+                      {step.number}
+                    </span>
+                    <h3 className="text-lg font-semibold">{step.title}</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {step.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -164,7 +219,7 @@ export default async function LandingPage() {
         <TutorialSection />
 
         {/* Section FAQ */}
-        <section className="py-16 bg-muted/20 border-t px-4">
+        <section id="faq" className="scroll-mt-24 py-16 bg-muted/20 border-t px-4 sm:scroll-mt-28">
           <div className="max-w-3xl mx-auto space-y-8">
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
@@ -193,10 +248,10 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* Transparansi Kontak */}
+        {/* Tentang HanFin */}
         <section
-          id="kontak"
-          className="scroll-mt-36 sm:scroll-mt-40 py-16 px-4 max-w-4xl mx-auto"
+          id="tentang"
+          className="scroll-mt-24 py-16 px-4 max-w-4xl mx-auto sm:scroll-mt-28"
         >
           <div className="border rounded-2xl p-6 sm:p-8 bg-background/80 backdrop-blur-sm space-y-6">
             <div className="space-y-2">
@@ -240,6 +295,34 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        <section
+          id="keamanan"
+          className="scroll-mt-24 border-y bg-muted/20 px-4 py-16 sm:scroll-mt-28"
+        >
+          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2 md:items-center">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                <ShieldCheck className="size-4" />
+                Kendali tetap di tangan Anda
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">
+                Pencatatan yang transparan dan terarah
+              </h2>
+            </div>
+            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <p>
+                HanFin tidak terhubung langsung ke rekening bank atau akun
+                exchange. Anda mencatat data sendiri dan dapat meninjau
+                informasi yang digunakan untuk ringkasan keuangan.
+              </p>
+              <p>
+                Analisis AI dan pasar merupakan informasi pendukung, bukan
+                jaminan hasil atau pengganti keputusan finansial Anda.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* CTA Section */}
         <section className="py-16 bg-primary text-primary-foreground px-4 text-center">
           <div className="max-w-2xl mx-auto space-y-6">
@@ -250,7 +333,9 @@ export default async function LandingPage() {
               Mulai kelola kas harian serta portofolio Anda secara terstruktur.
             </p>
             <Button size="lg" variant="secondary" asChild>
-              <Link href="/login">Sign In</Link>
+              <Link href={isLoggedIn ? "/home/dashboard" : "/login"}>
+                {isLoggedIn ? "Buka Dashboard" : "Mulai dengan HanFin"}
+              </Link>
             </Button>
           </div>
         </section>
@@ -270,17 +355,14 @@ export default async function LandingPage() {
             <span>— Finance & Market Intelligence</span>
           </div>
           <div className="flex items-center gap-6 text-muted-foreground">
-            <a
-              href="mailto:support@hanfin.app"
-              className="hover:text-foreground"
-            >
-              Kontak
-            </a>
-            <Link href="#edukasi" className="hover:text-foreground">
-              Tutorial
+            <Link href="#alur" className="hover:text-foreground">
+              Cara Kerja
             </Link>
-            <Link href="#fitur" className="hover:text-foreground">
-              Fitur
+            <Link href="#keamanan" className="hover:text-foreground">
+              Privasi
+            </Link>
+            <Link href="#faq" className="hover:text-foreground">
+              FAQ
             </Link>
           </div>
           <p>© 2026 HanFin. Hak Cipta Dilindungi Undang-Undang.</p>
