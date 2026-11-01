@@ -74,6 +74,18 @@ export const STOCK_ASSETS: AssetConfig[] = [
     name: "Bayan Resources Tbk.",
     isTradeable: true,
   },
+  {
+    symbol: "BUMI.JK",
+    shortSymbol: "BUMI",
+    name: "PT Bumi Resources Tbk Class A",
+    isTradeable: true,
+  },
+  {
+    symbol: "BSDE.JK",
+    shortSymbol: "BSDE",
+    name: "PT Bumi Serpong Damai Tbk",
+    isTradeable: true,
+  },
 ];
 
 export const CRYPTO_ASSETS: AssetConfig[] = [
@@ -158,6 +170,8 @@ export function getAssetLogoUrl(symbol: string, assetType: string): string {
     ASII: "https://s3-symbol-logo.tradingview.com/astra-international--big.svg",
     BBRI: "https://s3-symbol-logo.tradingview.com/bank-rakyat-indonesia--big.svg",
     BMRI: "https://s3-symbol-logo.tradingview.com/bank-mandiri--big.svg",
+    BUMI: "https://s3-symbol-logo.tradingview.com/bumi-resources-minerals--big.svg",
+    BSDE: "https://s3-symbol-logo.tradingview.com/bumi-serpong-damai--big.svg",
   };
 
   return stockLogos[cleanSymbol] || "";
