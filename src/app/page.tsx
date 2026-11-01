@@ -315,10 +315,7 @@ export default async function LandingPage() {
               Fitur
             </Link>
           </div>
-          <p>
-            © {new Date().getFullYear()} HanFin. Hak Cipta Dilindungi
-            Undang-Undang.
-          </p>
+          <p>© 2026 HanFin. Hak Cipta Dilindungi Undang-Undang.</p>
         </div>
       </footer>
 

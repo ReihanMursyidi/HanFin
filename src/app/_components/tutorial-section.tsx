@@ -18,12 +18,166 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+function TutorialCards({
+  onSelect,
+}: {
+  onSelect: (tutorial: TutorialItem) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {LANDING_TUTORIALS.map((tutorial) => (
+        <Card
+          key={tutorial.id}
+          className="border bg-background/80 backdrop-blur-sm flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md"
+        >
+          <CardHeader className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+                {tutorial.category}
+              </span>
+              <span>{tutorial.readTime}</span>
+            </div>
+            <CardTitle className="text-base font-bold leading-snug line-clamp-2">
+              {tutorial.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+              {tutorial.excerpt}
+            </p>
+            <div className="text-[11px] text-muted-foreground pt-3 border-t flex justify-end items-center">
+              <button
+                type="button"
+                onClick={() => onSelect(tutorial)}
+                className="font-semibold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Baca Selengkapnya <ArrowRight className="size-3" />
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function TutorialDetailModal({
+  tutorial,
+  onClose,
+}: {
+  tutorial: TutorialItem;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-background border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="p-5 sm:p-6 border-b flex items-start justify-between gap-4 bg-muted/20">
+          <div className="space-y-1">
+            <span className="inline-block text-xs font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full mb-1">
+              {tutorial.category}
+            </span>
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight">
+              {tutorial.title}
+            </h3>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="rounded-full shrink-0"
+          >
+            <X className="size-5" />
+          </Button>
+        </div>
+
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm text-foreground custom-scrollbar">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <Sparkles className="size-4" />
+              <span>Fitur apakah ini?</span>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
+              {tutorial.overview}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <Target className="size-4" />
+              <span>Tujuan & Kegunaan Utama</span>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
+              {tutorial.purpose}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <ListOrdered className="size-4" />
+              <span>Cara Menggunakan (Langkah demi Langkah)</span>
+            </div>
+            <ol className="space-y-2 pl-6 list-none">
+              {tutorial.steps.map((step, idx) => (
+                <li
+                  key={idx}
+                  className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2.5"
+                >
+                  <span className="flex items-center justify-center size-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <span className="leading-relaxed">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 font-semibold text-primary">
+              <CheckCircle2 className="size-4" />
+              <span>Bagaimana Fitur Ini Memudahkan Anda?</span>
+            </div>
+            <ul className="space-y-2 pl-6 list-none">
+              {tutorial.benefits.map((benefit, idx) => (
+                <li
+                  key={idx}
+                  className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2"
+                >
+                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{benefit}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-4 border-t bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            Siap mencoba fitur ini? Sign In untuk langsung memulai.
+          </span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="w-full sm:w-auto"
+            >
+              Tutup
+            </Button>
+            <Button size="sm" className="w-full sm:w-auto" asChild>
+              <Link href="/login">Coba Fitur Sekarang</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TutorialSection() {
   const [selectedTutorial, setSelectedTutorial] = useState<TutorialItem | null>(
     null,
   );
 
-  // Efek untuk menyembunyikan Navbar & mengunci scroll body saat modal dibuka
   useEffect(() => {
     if (selectedTutorial) {
       document.body.classList.add("modal-open");
@@ -60,152 +214,12 @@ export function TutorialSection() {
         </p>
       </div>
 
-      {/* Grid Tutorial Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {LANDING_TUTORIALS.map((tutorial) => (
-          <Card
-            key={tutorial.id}
-            className="border bg-background/80 backdrop-blur-sm flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md"
-          >
-            <CardHeader className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-                  {tutorial.category}
-                </span>
-                <span>{tutorial.readTime}</span>
-              </div>
-              <CardTitle className="text-base font-bold leading-snug line-clamp-2">
-                {tutorial.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                {tutorial.excerpt}
-              </p>
-              <div className="text-[11px] text-muted-foreground pt-3 border-t flex justify-end items-center">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTutorial(tutorial)}
-                  className="font-semibold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
-                >
-                  Baca Selengkapnya <ArrowRight className="size-3" />
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Modal Dialog Tutorial Detail */}
+      <TutorialCards onSelect={setSelectedTutorial} />
       {selectedTutorial && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl max-h-[90vh] bg-background border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b flex items-start justify-between gap-4 bg-muted/20">
-              <div className="space-y-1">
-                <span className="inline-block text-xs font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full mb-1">
-                  {selectedTutorial.category}
-                </span>
-                <h3 className="text-lg sm:text-xl font-bold tracking-tight">
-                  {selectedTutorial.title}
-                </h3>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedTutorial(null)}
-                className="rounded-full shrink-0"
-              >
-                <X className="size-5" />
-              </Button>
-            </div>
-
-            {/* Modal Scrollable Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm text-foreground custom-scrollbar">
-              {/* 1. Pengenalan Fitur */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-primary">
-                  <Sparkles className="size-4" />
-                  <span>Fitur apakah ini?</span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  {selectedTutorial.overview}
-                </p>
-              </div>
-
-              {/* 2. Kegunaan & Tujuan */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-primary">
-                  <Target className="size-4" />
-                  <span>Tujuan & Kegunaan Utama</span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  {selectedTutorial.purpose}
-                </p>
-              </div>
-
-              {/* 3. Cara Menggunakan (Langkah demi Langkah) */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 font-semibold text-primary">
-                  <ListOrdered className="size-4" />
-                  <span>Cara Menggunakan (Langkah demi Langkah)</span>
-                </div>
-                <ol className="space-y-2 pl-6 list-none">
-                  {selectedTutorial.steps.map((step, idx) => (
-                    <li
-                      key={idx}
-                      className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2.5"
-                    >
-                      <span className="flex items-center justify-center size-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0 mt-0.5">
-                        {idx + 1}
-                      </span>
-                      <span className="leading-relaxed">{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              {/* 4. Bagaimana Memudahkan Pengguna */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 font-semibold text-primary">
-                  <CheckCircle2 className="size-4" />
-                  <span>Bagaimana Fitur Ini Memudahkan Anda?</span>
-                </div>
-                <ul className="space-y-2 pl-6 list-none">
-                  {selectedTutorial.benefits.map((benefit, idx) => (
-                    <li
-                      key={idx}
-                      className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2"
-                    >
-                      <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span className="leading-relaxed">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">
-                Siap mencoba fitur ini? Sign In untuk langsung memulai.
-              </span>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedTutorial(null)}
-                  className="w-full sm:w-auto"
-                >
-                  Tutup
-                </Button>
-                <Button size="sm" className="w-full sm:w-auto" asChild>
-                  <Link href="/login">Coba Fitur Sekarang</Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TutorialDetailModal
+          tutorial={selectedTutorial}
+          onClose={() => setSelectedTutorial(null)}
+        />
       )}
     </section>
   );
