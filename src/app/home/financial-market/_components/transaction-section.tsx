@@ -34,7 +34,7 @@ export function TransactionSection({
   return (
     <div className="w-full overflow-x-auto min-w-0">
       <Card className="w-full shadow-sm border-primary/10">
-        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+        <CardHeader className="flex h-14 shrink-0 flex-row items-center justify-between border-b px-4 py-2">
           <CardTitle className="text-base font-semibold">
             Histori Transaksi {assetType === "stocks" ? "Saham" : "Kripto"}
           </CardTitle>

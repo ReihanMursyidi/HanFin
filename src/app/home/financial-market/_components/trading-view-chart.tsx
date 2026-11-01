@@ -189,7 +189,7 @@ export function TradingViewChart({
 
   return (
     <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+      <CardHeader className="flex h-14 shrink-0 flex-row items-center justify-between border-b px-4 py-2">
         <CardTitle className="text-base font-semibold flex items-center gap-2 min-w-0">
           <span className="truncate">Chart {symbol}</span>
           <span className="text-xs text-muted-foreground font-normal shrink-0">

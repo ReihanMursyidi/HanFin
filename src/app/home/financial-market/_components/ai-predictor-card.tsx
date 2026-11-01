@@ -131,7 +131,7 @@ export function AiPredictorCard({
         className,
       )}
     >
-      <CardHeader className="px-4 pt-4 pb-3 border-b shrink-0">
+      <CardHeader className="flex h-14 shrink-0 items-center border-b px-4 py-2">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold sm:text-base">
           <Sparkles className="size-4 text-primary shrink-0" />
           <span>HanFin Market Pulse</span>

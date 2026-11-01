@@ -86,7 +86,7 @@ export function MarketAssetsTable({
 
   return (
     <Card className="w-full shadow-sm border-primary/10 min-w-0 overflow-hidden">
-      <CardHeader className="pb-3 border-b">
+      <CardHeader className="flex h-14 shrink-0 items-center border-b px-4 py-2">
         <CardTitle className="text-base font-semibold">
           Daftar Aset Utama
         </CardTitle>
