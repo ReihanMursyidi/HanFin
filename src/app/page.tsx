@@ -11,13 +11,12 @@ import {
   Mail,
   HelpCircle,
   MapPin,
-  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ModeToggle } from "@/components/mode-toggle";
 import { AnimatedBlobBackground } from "@/components/landing/animated-blob-background";
 import { ScrollToTop } from "@/components/landing/scroll-to-top";
+import { LandingHeader } from "@/app/_components/landing-header";
 import { TutorialSection } from "@/app/_components/tutorial-section";
 
 import { getCurrentUser } from "@/features/auth/action";
@@ -34,8 +33,6 @@ export default async function LandingPage() {
     redirect("/home/dashboard");
   }
 
-  const isLoggedIn = !!user;
-
   return (
     <div className="relative min-h-screen bg-background text-foreground flex flex-col overflow-x-hidden">
       {/* Background Animated Blobs */}
@@ -47,36 +44,7 @@ export default async function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD_SCHEMA) }}
       />
 
-      {/* Header Navigation (Sembunyi otomatis ketika modal-open aktif) */}
-      <header className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300 in-[.modal-open]:hidden">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo Teks "HanFin" */}
-          <Link
-            href="/"
-            className="flex items-center font-bold text-xl sm:text-2xl tracking-tight hover:opacity-90 transition-opacity select-none"
-          >
-            <span className="text-black dark:text-white">Han</span>
-            <span className="text-primary">Fin</span>
-          </Link>
-
-          {/* Action Navbar */}
-          <div className="flex items-center gap-2">
-            <ModeToggle />
-            {isLoggedIn ? (
-              <Button size="lg" asChild className="gap-1.5 font-medium">
-                <Link href="/home/dashboard">
-                  <LayoutDashboard className="size-4" />
-                  Dashboard
-                </Link>
-              </Button>
-            ) : (
-              <Button size="lg" asChild>
-                <Link href="/login">Sign In</Link>
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 pt-16">
@@ -264,7 +232,7 @@ export default async function LandingPage() {
                     Lokasi Operasional
                   </p>
                   <p className="text-muted-foreground">
-                    Depok, Jawa Barat, Indonesia
+                    Tangerang Selatan, Banten, Indonesia
                   </p>
                 </div>
               </div>
