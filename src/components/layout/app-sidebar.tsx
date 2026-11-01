@@ -7,7 +7,6 @@ import {
   BitcoinIcon,
   BriefcaseIcon,
   ChevronRightIcon,
-  CoinsIcon,
   LandmarkIcon,
   LayoutDashboardIcon,
 } from "lucide-react";
@@ -89,12 +88,14 @@ export function AppSidebar() {
       <SidebarHeader className="flex flex-row items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-4 group-data-[collapsible=icon]:pt-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-2 px-2">
-              <CoinsIcon className="size-5 text-primary group-data-[collapsible=icon]:hidden" />
-              <h1 className="text-2xl font-bold text-primary group-data-[collapsible=icon]:hidden">
-                HanFin
-              </h1>
-            </div>
+            <Link
+              href="/"
+              onClick={() => setOpenMobile(false)}
+              className="flex items-center px-2 font-bold text-3xl tracking-tight group-data-[collapsible=icon]:hidden"
+            >
+              <span className="text-black dark:text-white">Han</span>
+              <span className="text-primary">Fin</span>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
 

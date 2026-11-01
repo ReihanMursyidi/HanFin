@@ -43,13 +43,12 @@ export const supabaseProxy = async (request: NextRequest) => {
   const pathname = request.nextUrl.pathname;
   const isProtectedRoute = pathname.startsWith("/home");
   const isAuthRoute = pathname === "/login";
-  const isLandingPage = pathname === "/";
 
   if (!user && isProtectedRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (user && (isAuthRoute || isLandingPage)) {
+  if (user && isAuthRoute) {
     return NextResponse.redirect(new URL("/home/dashboard", request.url));
   }
 
