@@ -111,10 +111,13 @@ export interface AIAnalysisResponse {
   summary: string;
   recommendation: "Beli" | "Jual" | "Tahan" | "Wait & See";
   riskLevel: "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi";
+  atrValue: number;
   targetPrices?: {
     entryPrice: number;
     takeProfit: number;
     stopLoss: number;
+    takeProfitPercent: number;
+    stopLossPercent: number;
   };
   trendAnalysis: string;
   momentumAnalysis: string;
@@ -124,3 +127,10 @@ export interface AIAnalysisResponse {
     resistance: number[];
   };
 }
+
+export type AIAnalysisFailureReason =
+  "high_demand" | "daily_quota_exceeded" | "unknown";
+
+export type AIAnalysisResult =
+  | { success: true; data: AIAnalysisResponse }
+  | { success: false; reason: AIAnalysisFailureReason };

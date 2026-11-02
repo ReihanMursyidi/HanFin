@@ -1,5 +1,6 @@
 import {
   ADX,
+  ATR,
   EMA,
   MACD,
   MFI,
@@ -16,6 +17,7 @@ export interface TechnicalAnalysisResult {
   strategy: TradingStrategy;
   lastClose: number;
   timeframeUsed: string;
+  atrValue: number | null;
   bullishCount: number;
   bearishCount: number;
   consensusSignal:
@@ -67,6 +69,13 @@ export function calculateTechnicalIndicators(
   const lows = candles.map((c) => c.low);
   const volumes = candles.map((c) => c.volume || 0);
   const lastClose = closes[closes.length - 1];
+  const atrValues = ATR.calculate({
+    high: highs,
+    low: lows,
+    close: closes,
+    period: 14,
+  });
+  const atrValue = atrValues[atrValues.length - 1] ?? null;
 
   // A. DUAL PERIOD STRATEGY
   let fastPeriod = 20;
@@ -298,6 +307,7 @@ export function calculateTechnicalIndicators(
     strategy: request.strategy,
     lastClose,
     timeframeUsed,
+    atrValue,
     bullishCount,
     bearishCount,
     consensusSignal,

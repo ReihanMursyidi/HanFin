@@ -1,10 +1,17 @@
 "use server";
 
+import { ApiError } from "@google/genai";
 import {
   aiAnalysisRequestSchema,
   aiAnalysisResponseSchema,
 } from "@/constants/market-constant";
-import { AIAnalysisRequest, AIAnalysisResponse, Currency } from "./types";
+import {
+  AIAnalysisFailureReason,
+  AIAnalysisRequest,
+  AIAnalysisResponse,
+  AIAnalysisResult,
+  Currency,
+} from "./types";
 import {
   getStockChartData,
   getCryptoChartData,
@@ -14,10 +21,41 @@ import { calculateTechnicalIndicators } from "./technical-analysis";
 import { convertCurrency, formatCurrency } from "@/lib/format";
 import { createAI } from "../ai/instance";
 
+const RISK_PARAMETERS = {
+  scalping: { atrMultiplier: 0.75, riskRewardRatio: 1.5 },
+  day_trading: { atrMultiplier: 1.2, riskRewardRatio: 2 },
+  swing_trading: { atrMultiplier: 2, riskRewardRatio: 3 },
+  investing: { atrMultiplier: 3, riskRewardRatio: 4 },
+} as const;
+
+function getAIAnalysisFailureReason(error: unknown): AIAnalysisFailureReason {
+  if (!(error instanceof ApiError)) return "unknown";
+
+  const message = error.message.toLowerCase();
+  const dailyQuotaError =
+    /(per day|daily|tokens? per day|quota.*day|day.*quota|_per_day)/i.test(
+      message,
+    );
+
+  if (error.status === 429 && dailyQuotaError) {
+    return "daily_quota_exceeded";
+  }
+
+  if (
+    error.status === 429 ||
+    error.status === 503 ||
+    /(high demand|overloaded|temporarily unavailable)/i.test(message)
+  ) {
+    return "high_demand";
+  }
+
+  return "unknown";
+}
+
 export async function analyzeMarketWithAI(
   rawRequest: AIAnalysisRequest,
   currency: Currency = "IDR",
-): Promise<AIAnalysisResponse> {
+): Promise<AIAnalysisResult> {
   const request = aiAnalysisRequestSchema.parse(rawRequest);
   let cryptoInterval: string = "1d";
   let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
@@ -64,12 +102,7 @@ export async function analyzeMarketWithAI(
     activeInterval = "1d";
     candles =
       request.asset_type === "crypto"
-        ? await getCryptoChartData(
-            request.symbol,
-            "1d",
-            100,
-            cryptoStartTime,
-          )
+        ? await getCryptoChartData(request.symbol, "1d", 100, cryptoStartTime)
         : await getStockChartData(request.symbol, period1, "1d");
   }
 
@@ -82,6 +115,11 @@ export async function analyzeMarketWithAI(
     request,
     activeInterval,
   );
+  if (techData.atrValue === null) {
+    throw new Error(
+      "Data candlestick tidak mencukupi untuk menghitung ATR 14.",
+    );
+  }
 
   const convertedLastClose = convertCurrency(
     techData.lastClose,
@@ -90,6 +128,13 @@ export async function analyzeMarketWithAI(
     fxRate,
   );
   const formattedLastClose = formatCurrency(convertedLastClose, currency);
+  const convertedAtrValue = convertCurrency(
+    techData.atrValue,
+    baseCurrency,
+    currency,
+    fxRate,
+  );
+  const { atrMultiplier, riskRewardRatio } = RISK_PARAMETERS[request.strategy];
 
   const convertedFastValue = techData.trend.fastValue
     ? convertCurrency(techData.trend.fastValue, baseCurrency, currency, fxRate)
@@ -117,6 +162,8 @@ export async function analyzeMarketWithAI(
 
     DETAIL INDIKATOR (DALAM ${currency}):
     - Harga Terakhir: ${formattedLastClose} (Angka murni: ${convertedLastClose})
+    - ATR (14 RMA): ${formatCurrency(convertedAtrValue, currency)}
+    - Parameter risiko strategi: Multiplier ATR ${atrMultiplier}x, Rasio R:R 1:${riskRewardRatio}
     - Trend (${techData.trend.name} ${techData.trend.fastPeriod}/${techData.trend.slowPeriod}): Fast ${convertedFastValue ? formatCurrency(convertedFastValue, currency) : "-"}, Slow ${convertedSlowValue ? formatCurrency(convertedSlowValue, currency) : "-"}, Status (${techData.trend.crossoverStatus})
     - Momentum (${techData.momentum.name}): RSI ${techData.momentum.rsiValue?.toFixed(2)}, Sinyal ${techData.momentum.signal}
     - Volume (${techData.volume.name}): Sinyal ${techData.volume.signal}
@@ -125,22 +172,16 @@ export async function analyzeMarketWithAI(
 
     ATURAN KETAT TARGET PRICES & MANAJEMEN RISIKO (DALAM ${currency}):
     1. JIKA REKOMENDASI ADALAH "Beli" ATAU "Jual":
-      - "entryPrice": Dekat area Support terdekat (Beli) atau Resistance terdekat (Jual) / penutupan terakhir (${convertedLastClose}).
-      - "stopLoss": Diletakkan presisi di bawah Support (Beli) atau di atas Resistance (Jual). Jarak risiko (entryPrice - stopLoss) HARUS REALISTIS (misal minimal 1% - 3% dari entryPrice, DILARANG memasang Stop Loss terlampau sempit/mikro).
-      - "takeProfit": WAJIB RATIO 1 : 3! Jarak keuntungan (takeProfit - entryPrice) HARUS MINIMAL 3 KALI LEBIH BESAR dari jarak risiko (entryPrice - stopLoss).
-    2. JIKA REKOMENDASI ADALAH "Wait & See" ATAU "Tahan" (misal karena R:R 1:3 tidak terpenuhi, atau pasar konsolidasi/tanpa tren):
+      - Gunakan "entryPrice" sama dengan harga terakhir (${convertedLastClose}).
+      - Stop loss dan take profit akhir akan dihitung oleh sistem menggunakan ATR 14 RMA, level support/resistance terdekat, multiplier ATR ${atrMultiplier}x, dan rasio R:R 1:${riskRewardRatio}. Jangan mengubah parameter ini.
+    2. JIKA REKOMENDASI ADALAH "Wait & See" ATAU "Tahan" (misalnya rasio R:R 1:${riskRewardRatio} tidak sesuai kondisi pasar atau pasar konsolidasi):
       - DILARANG MENERBITKAN FIELD "targetPrices"! Jangan masukkan objek "targetPrices" pada JSON response karena tidak ada setup transaksi yang aktif.
 
-    Berikan jawaban JSON murni sesuai skema:
+    Berikan jawaban JSON murni sesuai skema. Jangan menghitung targetPrices; sistem akan menghitungnya untuk rekomendasi Beli/Jual:
     {
       "summary": "Ringkasan kesimpulan sinyal dalam 1-2 kalimat.",
       "recommendation": "Beli" | "Jual" | "Tahan" | "Wait & See",
       "riskLevel": "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi",
-      "targetPrices": {
-        "entryPrice": number,
-        "takeProfit": number,
-        "stopLoss": number
-      },
       "trendAnalysis": "Penjelasan rinci tren.",
       "momentumAnalysis": "Penjelasan rinci momentum.",
       "volumeAnalysis": "Penjelasan rinci akumulasi/distribusi volume.",
@@ -169,17 +210,45 @@ export async function analyzeMarketWithAI(
       throw new Error("Respon AI tidak sesuai format skema");
     }
 
-    return safeResponse.data;
+    const { recommendation } = safeResponse.data;
+    const isLong = recommendation === "Beli";
+    const isShort = recommendation === "Jual";
+    let targetPrices: AIAnalysisResponse["targetPrices"];
+
+    if (isLong || isShort) {
+      const entryPrice = convertedLastClose;
+      const keyLevel = isLong ? convertedSupport[0] : convertedResistance[0];
+      const atrBuffer = atrMultiplier * convertedAtrValue;
+      const stopLoss = isLong ? keyLevel - atrBuffer : keyLevel + atrBuffer;
+      const riskDistance = Math.abs(entryPrice - stopLoss);
+      const profitDistance = riskDistance * riskRewardRatio;
+      const takeProfit = isLong
+        ? entryPrice + profitDistance
+        : entryPrice - profitDistance;
+
+      targetPrices = {
+        entryPrice,
+        stopLoss,
+        takeProfit,
+        stopLossPercent: (riskDistance / entryPrice) * 100,
+        takeProfitPercent: (profitDistance / entryPrice) * 100,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        ...safeResponse.data,
+        atrValue: convertedAtrValue,
+        targetPrices,
+        keyLevels: {
+          support: convertedSupport,
+          resistance: convertedResistance,
+        },
+      },
+    };
   } catch (error) {
     console.error("AI Analysis Error:", error);
-    return {
-      summary: "Gagal memproses analisis AI untuk saat ini.",
-      recommendation: "Wait & See",
-      riskLevel: "Sedang",
-      trendAnalysis: "Analisis tren tidak tersedia.",
-      momentumAnalysis: "Analisis momentum tidak tersedia.",
-      volumeAnalysis: "Analisis volume tidak tersedia.",
-      keyLevels: { support: [], resistance: [] },
-    };
+    return { success: false, reason: getAIAnalysisFailureReason(error) };
   }
 }

@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type {
   AIAnalysisResponse,
   AssetType,
@@ -115,10 +116,24 @@ export function AiPredictorCard({
         },
         currency,
       );
-      setAnalysis(result);
+      if (!result.success) {
+        setAnalysis(null);
+        setAnalyzedParams(null);
+        const message =
+          result.reason === "high_demand"
+            ? "Model AI sedang mengalami permintaan tinggi atau batas permintaan sementara tercapai. Coba lagi beberapa menit."
+            : result.reason === "daily_quota_exceeded"
+              ? "Kuota token harian AI telah habis. Silakan coba lagi setelah kuota direset."
+              : "Analisis AI gagal diproses. Silakan coba kembali.";
+        toast.error(message);
+        return;
+      }
+
+      setAnalysis(result.data);
       setAnalyzedParams({ symbol, strategy });
     } catch (err) {
       console.error("Gagal menjalankan AI Predictor:", err);
+      toast.error("Analisis AI gagal diproses. Silakan coba kembali.");
     } finally {
       setIsLoading(false);
     }
@@ -364,37 +379,62 @@ export function AiPredictorCard({
               </div>
             </div>
 
+            <div className="flex items-center justify-between rounded-md bg-muted/30 px-2.5 py-2 text-[11px]">
+              <span className="text-muted-foreground">ATR (14 RMA)</span>
+              <span className="font-semibold">
+                {formatCurrency(analysis.atrValue, currency)}
+              </span>
+            </div>
+
             {/* Target Prices Grid */}
             {analysis.targetPrices && (
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-center">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
-                    <ArrowDownCircle className="size-3 text-emerald-500 shrink-0" />
-                    <span>Entry</span>
-                  </span>
-                  <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
-                    {formatCurrency(analysis.targetPrices.entryPrice, currency)}
-                  </p>
-                </div>
+              <div className="space-y-2 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-center">
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
+                      <ArrowDownCircle className="size-3 text-emerald-500 shrink-0" />
+                      <span>Entry</span>
+                    </span>
+                    <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
+                      {formatCurrency(
+                        analysis.targetPrices.entryPrice,
+                        currency,
+                      )}
+                    </p>
+                  </div>
 
-                <div className="space-y-0.5 border-x border-border/50 px-1 min-w-0">
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
-                    <ArrowUpCircle className="size-3 text-primary shrink-0" />
-                    <span>Target</span>
-                  </span>
-                  <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
-                    {formatCurrency(analysis.targetPrices.takeProfit, currency)}
-                  </p>
-                </div>
+                  <div className="space-y-0.5 border-x border-border/50 px-1 min-w-0">
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
+                      <ArrowUpCircle className="size-3 text-primary shrink-0" />
+                      <span>Target</span>
+                    </span>
+                    <p className="font-bold text-[11px] sm:text-xs text-foreground truncate">
+                      {formatCurrency(
+                        analysis.targetPrices.takeProfit,
+                        currency,
+                      )}
+                    </p>
+                  </div>
 
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
-                    <ShieldX className="size-3 text-rose-500 shrink-0" />
-                    <span>Stop Loss</span>
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-1 truncate">
+                      <ShieldX className="size-3 text-rose-500 shrink-0" />
+                      <span>Stop Loss</span>
+                    </span>
+                    <p className="font-bold text-[11px] sm:text-xs text-rose-500 truncate">
+                      {formatCurrency(analysis.targetPrices.stopLoss, currency)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-center gap-3 border-t border-border/50 pt-2 text-[10px] text-muted-foreground">
+                  <span>
+                    Jarak SL: {analysis.targetPrices.stopLossPercent.toFixed(2)}
+                    %
                   </span>
-                  <p className="font-bold text-[11px] sm:text-xs text-rose-500 truncate">
-                    {formatCurrency(analysis.targetPrices.stopLoss, currency)}
-                  </p>
+                  <span>
+                    Jarak TP:{" "}
+                    {analysis.targetPrices.takeProfitPercent.toFixed(2)}%
+                  </span>
                 </div>
               </div>
             )}

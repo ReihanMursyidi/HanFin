@@ -239,13 +239,6 @@ export const aiAnalysisResponseSchema = z.object({
     "Tinggi",
     "Sangat Tinggi",
   ]),
-  targetPrices: z
-    .object({
-      entryPrice: z.number(),
-      takeProfit: z.number(),
-      stopLoss: z.number(),
-    })
-    .optional(),
   trendAnalysis: z.string(),
   momentumAnalysis: z.string(),
   volumeAnalysis: z.string(),
