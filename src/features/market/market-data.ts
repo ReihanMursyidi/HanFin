@@ -109,15 +109,40 @@ export const getCryptoChartData = unstable_cache(
     symbol: string,
     interval: string = "1d",
     limit: number = 100,
+    startTime?: number,
   ): Promise<OHLCData[]> => {
     try {
       const binanceSymbol = `${symbol}USDT`;
-      const path = `/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
+      type BinanceKline = [number, string, string, string, string, string];
+      let klines: BinanceKline[];
 
-      const klines =
-        await fetchBinancePublic<
-          Array<[number, string, string, string, string, string]>
-        >(path);
+      if (startTime === undefined) {
+        const path = `/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
+        klines = await fetchBinancePublic<BinanceKline[]>(path);
+      } else {
+        const endTime = Date.now();
+        let nextStartTime = startTime;
+        klines = [];
+
+        while (nextStartTime <= endTime) {
+          const path =
+            `/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}` +
+            `&startTime=${nextStartTime}&endTime=${endTime}&limit=1000`;
+          const batch = await fetchBinancePublic<BinanceKline[]>(path);
+
+          if (batch.length === 0) break;
+
+          klines.push(...batch);
+          const lastOpenTime = Number(batch[batch.length - 1][0]);
+          const followingStartTime = lastOpenTime + 1;
+          if (followingStartTime <= nextStartTime) {
+            throw new Error("Binance mengembalikan rentang candle yang tidak valid");
+          }
+          nextStartTime = followingStartTime;
+
+          if (batch.length < 1000) break;
+        }
+      }
 
       const seenTimes = new Set<string>();
       const result: OHLCData[] = [];

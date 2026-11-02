@@ -22,6 +22,7 @@ export async function analyzeMarketWithAI(
   let cryptoInterval: string = "1d";
   let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
   let period1 = "2024-01-01";
+  let cryptoStartTime: number | undefined;
 
   if (request.strategy === "scalping") {
     cryptoInterval = "15m";
@@ -39,11 +40,21 @@ export async function analyzeMarketWithAI(
     cryptoInterval = "1w";
     stockInterval = "1wk";
     period1 = "2020-01-01";
+  } else if (request.strategy === "swing_trading") {
+    const threeYearsAgo = new Date();
+    threeYearsAgo.setUTCFullYear(threeYearsAgo.getUTCFullYear() - 3);
+    period1 = threeYearsAgo.toISOString().split("T")[0];
+    cryptoStartTime = Date.parse(period1);
   }
 
   let candles =
     request.asset_type === "crypto"
-      ? await getCryptoChartData(request.symbol, cryptoInterval, 150)
+      ? await getCryptoChartData(
+          request.symbol,
+          cryptoInterval,
+          150,
+          cryptoStartTime,
+        )
       : await getStockChartData(request.symbol, period1, stockInterval);
 
   let activeInterval: string =
@@ -53,8 +64,13 @@ export async function analyzeMarketWithAI(
     activeInterval = "1d";
     candles =
       request.asset_type === "crypto"
-        ? await getCryptoChartData(request.symbol, "1d", 100)
-        : await getStockChartData(request.symbol, "2024-01-01", "1d");
+        ? await getCryptoChartData(
+            request.symbol,
+            "1d",
+            100,
+            cryptoStartTime,
+          )
+        : await getStockChartData(request.symbol, period1, "1d");
   }
 
   const fxRate = await getExchangeRateUSDIDR();
