@@ -124,6 +124,12 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
     name: "Aster",
     isTradeable: true,
   },
+  {
+    symbol: "SUIUSDT",
+    shortSymbol: "SUI",
+    name: "Sui",
+    isTradeable: true,
+  },
 ];
 
 export const BINANCE_ENDPOINTS = [
