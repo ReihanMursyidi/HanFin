@@ -140,6 +140,7 @@ export const AI_ANALYSIS_FEEDBACK = [
   "failure",
   "inconclusive",
 ] as const;
+export const AI_ANALYSIS_EVALUATION_LIMIT = 150;
 export type AIAnalysisFeedback = (typeof AI_ANALYSIS_FEEDBACK)[number];
 
 export interface AIAnalysisHistoryEntry {
@@ -166,7 +167,12 @@ export interface AIAnalysisHistoryEntry {
 export interface AIAnalysisHistorySummary {
   entries: AIAnalysisHistoryEntry[];
   totalRows: number;
+  strategyMetrics: Record<TradingStrategy, AIAnalysisStrategyMetric>;
+}
+
+export interface AIAnalysisStrategyMetric {
   winRate: number | null;
   evaluatedCount: number;
   successfulCount: number;
+  failureCount: number;
 }

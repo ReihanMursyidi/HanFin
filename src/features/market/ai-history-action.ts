@@ -2,16 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { aiAnalysisResponseSchema } from "@/constants/market-constant";
 import { createClient } from "@/lib/supabase/server";
 import {
   AI_ANALYSIS_FEEDBACK,
+  AI_ANALYSIS_EVALUATION_LIMIT,
   AIAnalysisFeedback,
-  AIAnalysisHistoryEntry,
   AIAnalysisHistorySummary,
+  AIAnalysisStrategyMetric,
+  TRADING_STRATEGIES,
 } from "./types";
 
 const historyLimit = 100;
-const evaluationLimit = 150;
+const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
+  atrValue: z.number(),
+  targetPrices: z
+    .object({
+      entryPrice: z.number(),
+      takeProfit: z.number(),
+      stopLoss: z.number(),
+      takeProfitPercent: z.number(),
+      stopLossPercent: z.number(),
+    })
+    .optional(),
+});
 
 export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> {
   const supabase = await createClient();
@@ -20,7 +34,7 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const [historyResult, countResult, evaluationResult] = await Promise.all([
+  const [historyResult, countResult, evaluationResults] = await Promise.all([
     supabase
       .from("ai_market_analysis_history")
       .select(
@@ -33,13 +47,18 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
       .from("ai_market_analysis_history")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id),
-    supabase
-      .from("ai_market_analysis_history")
-      .select("feedback")
-      .eq("user_id", user.id)
-      .in("feedback", ["success", "failure"])
-      .order("reviewed_at", { ascending: false })
-      .limit(evaluationLimit),
+    Promise.all(
+      TRADING_STRATEGIES.map((strategy) =>
+        supabase
+          .from("ai_market_analysis_history")
+          .select("feedback")
+          .eq("user_id", user.id)
+          .eq("strategy", strategy)
+          .in("feedback", ["success", "failure"])
+          .order("reviewed_at", { ascending: false })
+          .limit(AI_ANALYSIS_EVALUATION_LIMIT),
+      ),
+    ),
   ]);
 
   if (historyResult.error) {
@@ -52,21 +71,46 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
       `Failed to count AI analysis history: ${countResult.error.message}`,
     );
   }
-  if (evaluationResult.error) {
-    throw new Error(
-      `Failed to calculate AI analysis win rate: ${evaluationResult.error.message}`,
-    );
+  if (countResult.count === null) {
+    throw new Error("AI analysis history count was not returned");
+  }
+  if (historyResult.data === null) {
+    throw new Error("AI analysis history data was not returned");
   }
 
-  const evaluationRows = evaluationResult.data || [];
-  const successfulCount = evaluationRows.filter(
-    (row) => row.feedback === "success",
-  ).length;
-  const evaluatedCount = evaluationRows.length;
-  const entries = (historyResult.data || []).map((row) => ({
+  const strategyMetrics = Object.fromEntries(
+    TRADING_STRATEGIES.map((strategy, index) => {
+      const result = evaluationResults[index];
+      if (result.error) {
+        throw new Error(
+          `Failed to calculate ${strategy} win rate: ${result.error.message}`,
+        );
+      }
+      if (result.data === null) {
+        throw new Error(`${strategy} evaluation data was not returned`);
+      }
+
+      const rows = result.data;
+      const successfulCount = rows.filter(
+        (row) => row.feedback === "success",
+      ).length;
+      const evaluatedCount = rows.length;
+
+      const metric: AIAnalysisStrategyMetric = {
+        winRate:
+          evaluatedCount > 0 ? (successfulCount / evaluatedCount) * 100 : null,
+        evaluatedCount,
+        successfulCount,
+        failureCount: evaluatedCount - successfulCount,
+      };
+
+      return [strategy, metric];
+    }),
+  ) as Record<(typeof TRADING_STRATEGIES)[number], AIAnalysisStrategyMetric>;
+
+  const entries = historyResult.data.map((row) => ({
     ...row,
-    analysis_result:
-      row.analysis_result as unknown as AIAnalysisHistoryEntry["analysis_result"],
+    analysis_result: storedAnalysisResultSchema.parse(row.analysis_result),
     technical_snapshot: row.technical_snapshot as Record<string, unknown>,
     candle_count: Number(row.candle_count),
     feedback: row.feedback as AIAnalysisFeedback | null,
@@ -74,11 +118,8 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
 
   return {
     entries,
-    totalRows: countResult.count || 0,
-    winRate:
-      evaluatedCount > 0 ? (successfulCount / evaluatedCount) * 100 : null,
-    evaluatedCount,
-    successfulCount,
+    totalRows: countResult.count,
+    strategyMetrics,
   };
 }
 
