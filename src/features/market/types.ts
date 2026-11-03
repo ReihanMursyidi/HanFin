@@ -133,4 +133,40 @@ export type AIAnalysisFailureReason =
 
 export type AIAnalysisResult =
   | { success: true; data: AIAnalysisResponse }
-  | { success: false; reason: AIAnalysisFailureReason };
+  | { success: false; reason: AIAnalysisFailureReason | "history_save_failed" };
+
+export const AI_ANALYSIS_FEEDBACK = [
+  "success",
+  "failure",
+  "inconclusive",
+] as const;
+export type AIAnalysisFeedback = (typeof AI_ANALYSIS_FEEDBACK)[number];
+
+export interface AIAnalysisHistoryEntry {
+  id: string;
+  symbol: string;
+  asset_type: AssetType;
+  strategy: TradingStrategy;
+  timeframe: string;
+  currency: Currency;
+  trend_indicator: TrendIndicator;
+  momentum_indicator: MomentumIndicator;
+  volume_indicator: VolumeIndicator;
+  recommendation: AIAnalysisResponse["recommendation"];
+  risk_level: AIAnalysisResponse["riskLevel"];
+  summary: string;
+  analysis_result: AIAnalysisResponse;
+  technical_snapshot: Record<string, unknown>;
+  candle_count: number;
+  feedback: AIAnalysisFeedback | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface AIAnalysisHistorySummary {
+  entries: AIAnalysisHistoryEntry[];
+  totalRows: number;
+  winRate: number | null;
+  evaluatedCount: number;
+  successfulCount: number;
+}

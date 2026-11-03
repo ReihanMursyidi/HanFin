@@ -120,11 +120,13 @@ export function AiPredictorCard({
         setAnalysis(null);
         setAnalyzedParams(null);
         const message =
-          result.reason === "high_demand"
-            ? "Model AI sedang mengalami permintaan tinggi atau batas permintaan sementara tercapai. Coba lagi beberapa menit."
-            : result.reason === "daily_quota_exceeded"
-              ? "Kuota token harian AI telah habis. Silakan coba lagi setelah kuota direset."
-              : "Analisis AI gagal diproses. Silakan coba kembali.";
+          result.reason === "history_save_failed"
+            ? "Analisis selesai, tetapi gagal disimpan ke histori. Coba lagi nanti."
+            : result.reason === "high_demand"
+              ? "Model AI sedang mengalami permintaan tinggi atau batas permintaan sementara tercapai. Coba lagi beberapa menit."
+              : result.reason === "daily_quota_exceeded"
+                ? "Kuota token harian AI telah habis. Silakan coba lagi setelah kuota direset."
+                : "Analisis AI gagal diproses. Silakan coba kembali.";
         toast.error(message);
         return;
       }

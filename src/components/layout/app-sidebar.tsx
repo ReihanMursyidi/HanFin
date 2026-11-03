@@ -7,6 +7,7 @@ import {
   BitcoinIcon,
   BriefcaseIcon,
   ChevronRightIcon,
+  HistoryIcon,
   LandmarkIcon,
   LayoutDashboardIcon,
 } from "lucide-react";
@@ -73,6 +74,11 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
         label: "Crypto",
         href: "/home/financial-market/crypto",
         icon: <BitcoinIcon className="size-4" />,
+      },
+      {
+        label: "AI History",
+        href: "/home/financial-market/ai-history",
+        icon: <HistoryIcon className="size-4" />,
       },
     ],
   },

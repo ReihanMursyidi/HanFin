@@ -1,6 +1,7 @@
 "use server";
 
 import { ApiError } from "@google/genai";
+import { revalidatePath } from "next/cache";
 import {
   aiAnalysisRequestSchema,
   aiAnalysisResponseSchema,
@@ -20,6 +21,7 @@ import {
 import { calculateTechnicalIndicators } from "./technical-analysis";
 import { convertCurrency, formatCurrency } from "@/lib/format";
 import { createAI } from "../ai/instance";
+import { createClient } from "@/lib/supabase/server";
 
 const RISK_PARAMETERS = {
   scalping: { atrMultiplier: 0.75, riskRewardRatio: 1.5 },
@@ -57,6 +59,12 @@ export async function analyzeMarketWithAI(
   currency: Currency = "IDR",
 ): Promise<AIAnalysisResult> {
   const request = aiAnalysisRequestSchema.parse(rawRequest);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
   let cryptoInterval: string = "1d";
   let stockInterval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d";
   let period1 = "2024-01-01";
@@ -144,10 +152,10 @@ export async function analyzeMarketWithAI(
     : null;
 
   const convertedSupport = techData.keyLevels.support.map((val) =>
-    Math.round(convertCurrency(val, baseCurrency, currency, fxRate)),
+    convertCurrency(val, baseCurrency, currency, fxRate),
   );
   const convertedResistance = techData.keyLevels.resistance.map((val) =>
-    Math.round(convertCurrency(val, baseCurrency, currency, fxRate)),
+    convertCurrency(val, baseCurrency, currency, fxRate),
   );
 
   const prompt = `
@@ -210,10 +218,11 @@ export async function analyzeMarketWithAI(
       throw new Error("Respon AI tidak sesuai format skema");
     }
 
-    const { recommendation } = safeResponse.data;
+    let recommendation = safeResponse.data.recommendation;
     const isLong = recommendation === "Beli";
     const isShort = recommendation === "Jual";
     let targetPrices: AIAnalysisResponse["targetPrices"];
+    let summary = safeResponse.data.summary;
 
     if (isLong || isShort) {
       const entryPrice = convertedLastClose;
@@ -226,27 +235,81 @@ export async function analyzeMarketWithAI(
         ? entryPrice + profitDistance
         : entryPrice - profitDistance;
 
-      targetPrices = {
-        entryPrice,
-        stopLoss,
-        takeProfit,
-        stopLossPercent: (riskDistance / entryPrice) * 100,
-        takeProfitPercent: (profitDistance / entryPrice) * 100,
-      };
+      if (
+        [entryPrice, stopLoss, takeProfit, riskDistance, profitDistance].every(
+          Number.isFinite,
+        ) &&
+        entryPrice > 0 &&
+        stopLoss > 0 &&
+        takeProfit > 0 &&
+        riskDistance > 0
+      ) {
+        targetPrices = {
+          entryPrice,
+          stopLoss,
+          takeProfit,
+          stopLossPercent: (riskDistance / entryPrice) * 100,
+          takeProfitPercent: (profitDistance / entryPrice) * 100,
+        };
+      } else {
+        recommendation = "Wait & See";
+        summary +=
+          " Setup transaksi dibatalkan karena perhitungan ATR menghasilkan level harga yang tidak valid.";
+      }
     }
 
-    return {
-      success: true,
-      data: {
-        ...safeResponse.data,
-        atrValue: convertedAtrValue,
-        targetPrices,
-        keyLevels: {
-          support: convertedSupport,
-          resistance: convertedResistance,
-        },
+    const analysisResult: AIAnalysisResponse = {
+      ...safeResponse.data,
+      recommendation,
+      summary,
+      atrValue: convertedAtrValue,
+      targetPrices,
+      keyLevels: {
+        support: convertedSupport,
+        resistance: convertedResistance,
       },
     };
+
+    if (analysisResult.recommendation !== "Wait & See") {
+      const { error: saveError } = await supabase
+        .from("ai_market_analysis_history")
+        .insert({
+          user_id: user.id,
+          symbol: request.symbol,
+          asset_type: request.asset_type,
+          strategy: request.strategy,
+          timeframe: activeInterval,
+          currency,
+          trend_indicator: request.trend_indicator,
+          momentum_indicator: request.momentum_indicator,
+          volume_indicator: request.volume_indicator,
+          recommendation: analysisResult.recommendation,
+          risk_level: analysisResult.riskLevel,
+          summary: analysisResult.summary,
+          analysis_result: analysisResult,
+          technical_snapshot: {
+            request: {
+              trend_indicator: request.trend_indicator,
+              momentum_indicator: request.momentum_indicator,
+              volume_indicator: request.volume_indicator,
+            },
+            indicators: techData,
+            atrValue: convertedAtrValue,
+            riskParameters: { atrMultiplier, riskRewardRatio },
+          },
+          candle_snapshot: candles,
+          candle_count: candles.length,
+        });
+
+      if (saveError) {
+        console.error("AI Analysis History Save Error:", saveError);
+        return { success: false, reason: "history_save_failed" };
+      }
+
+      revalidatePath("/home/financial-market/ai-history");
+    }
+
+    return { success: true, data: analysisResult };
   } catch (error) {
     console.error("AI Analysis Error:", error);
     return { success: false, reason: getAIAnalysisFailureReason(error) };
