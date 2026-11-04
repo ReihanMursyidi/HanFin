@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -48,6 +49,7 @@ export function FinancialProfileModal({
   onOpenChange,
   mustComplete = false,
 }: ProfileModalProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { data: profileData, isLoading: isFetching } = useQuery({
@@ -70,6 +72,7 @@ export function FinancialProfileModal({
       queryClient.invalidateQueries({ queryKey: ["financialProfile"] });
       toast.success("Konteks AI berhasil diperbarui!");
       onOpenChange(false);
+      router.refresh();
     },
     onError: (error) => {
       console.error("[Save Profile Error]:", error);
