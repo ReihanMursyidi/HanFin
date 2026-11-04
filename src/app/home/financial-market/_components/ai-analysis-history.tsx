@@ -9,12 +9,14 @@ import {
   Loader2,
   Percent,
   Rows3,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -54,6 +56,12 @@ const STRATEGY_LABELS: Record<AIAnalysisHistoryEntry["strategy"], string> = {
   swing_trading: "Swing Trading",
   investing: "Investing",
 };
+
+function getFeedbackPriority(feedback: AIAnalysisFeedback | null) {
+  if (feedback === null) return 0;
+  if (feedback === "inconclusive") return 1;
+  return 2;
+}
 
 function FeedbackControl({ entry }: { entry: AIAnalysisHistoryEntry }) {
   const router = useRouter();
@@ -334,19 +342,76 @@ export function AIAnalysisHistory({
 }) {
   const [selectedStrategy, setSelectedStrategy] =
     useState<TradingStrategy | null>(null);
-  const filteredEntries = selectedStrategy
-    ? entries.filter((entry) => entry.strategy === selectedStrategy)
-    : entries;
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const evaluatedStrategyMetrics = Object.values(strategyMetrics).filter(
+    (metric) => metric.evaluatedCount > 0,
+  );
+  const averageWinRate =
+    evaluatedStrategyMetrics.length > 0
+      ? evaluatedStrategyMetrics.reduce(
+          (total, metric) => total + (metric.winRate ?? 0),
+          0,
+        ) / evaluatedStrategyMetrics.length
+      : null;
+  const filteredEntries = entries
+    .filter((entry) => {
+      const matchesStrategy =
+        !selectedStrategy || entry.strategy === selectedStrategy;
+      const searchableText = [
+        entry.symbol,
+        entry.asset_type === "crypto" ? "Kripto" : "Saham",
+        entry.strategy,
+        STRATEGY_LABELS[entry.strategy],
+        entry.timeframe,
+        entry.currency,
+        entry.trend_indicator,
+        entry.momentum_indicator,
+        entry.volume_indicator,
+        entry.recommendation,
+        entry.risk_level,
+        entry.summary,
+        entry.analysis_result.trendAnalysis,
+        entry.analysis_result.momentumAnalysis,
+        entry.analysis_result.volumeAnalysis,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return matchesStrategy && searchableText.includes(normalizedQuery);
+    })
+    .sort(
+      (a, b) =>
+        getFeedbackPriority(a.feedback) - getFeedbackPriority(b.feedback),
+    );
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Card>
-          <CardContent className="flex items-center gap-3 py-5">
-            <Rows3 className="size-5 text-primary" />
-            <div>
-              <p className="text-xs text-muted-foreground">Total histori</p>
-              <p className="text-xl font-bold">{totalRows}</p>
+          <CardContent className="flex h-full flex-col justify-center gap-4">
+            <div className="flex items-center gap-3">
+              <Rows3 className="size-5 shrink-0 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Total histori</p>
+                <p className="text-xl font-bold">{totalRows}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 border-t pt-3">
+              <Percent className="size-5 shrink-0 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Rata-rata winrate
+                </p>
+                <p className="text-xl font-bold">
+                  {averageWinRate === null
+                    ? "—"
+                    : `${averageWinRate.toFixed(2)}%`}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  dari {evaluatedStrategyMetrics.length} strategi dievaluasi
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -397,6 +462,30 @@ export function AIAnalysisHistory({
         })}
       </div>
 
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Cari berdasarkan aset, strategi, rekomendasi, atau keyword..."
+          aria-label="Cari histori analisis"
+          className="pl-9 pr-10"
+        />
+        {searchQuery && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Hapus pencarian"
+            onClick={() => setSearchQuery("")}
+            className="absolute inset-y-0 right-1 my-auto text-muted-foreground"
+          >
+            <X />
+          </Button>
+        )}
+      </div>
+
       {selectedStrategy && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/20 px-4 py-3 text-sm">
           <p>
@@ -419,9 +508,11 @@ export function AIAnalysisHistory({
       {filteredEntries.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            {selectedStrategy
-              ? `Belum ada histori ${STRATEGY_LABELS[selectedStrategy]} pada 100 analisis terbaru yang dimuat.`
-              : "Belum ada histori analisis AI. Jalankan analisis dari halaman Stocks atau Crypto untuk mulai mencatat sinyal."}
+            {normalizedQuery
+              ? "Tidak ada histori yang cocok dengan keyword pencarian."
+              : selectedStrategy
+                ? `Belum ada histori ${STRATEGY_LABELS[selectedStrategy]} pada 100 analisis terbaru yang dimuat.`
+                : "Belum ada histori analisis AI. Jalankan analisis dari halaman Stocks atau Crypto untuk mulai mencatat sinyal."}
           </CardContent>
         </Card>
       ) : (
@@ -430,9 +521,11 @@ export function AIAnalysisHistory({
             <AnalysisHistoryCard key={entry.id} entry={entry} />
           ))}
           <p className="text-center text-xs text-muted-foreground">
-            {selectedStrategy
-              ? `Menampilkan ${filteredEntries.length} dari ${entries.length} histori terbaru yang dimuat untuk ${STRATEGY_LABELS[selectedStrategy]}.`
-              : `Menampilkan ${entries.length} dari ${totalRows} analisis terbaru (maksimal 100).`}
+            {normalizedQuery
+              ? `Menampilkan ${filteredEntries.length} dari ${entries.length} histori yang dimuat sesuai pencarian${selectedStrategy ? ` untuk ${STRATEGY_LABELS[selectedStrategy]}` : ""}.`
+              : selectedStrategy
+                ? `Menampilkan ${filteredEntries.length} dari ${entries.length} histori terbaru yang dimuat untuk ${STRATEGY_LABELS[selectedStrategy]}.`
+                : `Menampilkan ${entries.length} dari ${totalRows} analisis terbaru (maksimal 100).`}
           </p>
         </>
       )}
