@@ -130,6 +130,12 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
     name: "Sui",
     isTradeable: true,
   },
+  {
+    symbol: "XAUTUSDT",
+    shortSymbol: "XAUT",
+    name: "Tether Gold",
+    isTradeable: true,
+  },
 ];
 
 export const BINANCE_ENDPOINTS = [
