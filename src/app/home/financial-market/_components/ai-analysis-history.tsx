@@ -37,6 +37,10 @@ import {
   deleteAIAnalysisHistoryEntry,
   updateAIAnalysisFeedback,
 } from "@/features/market/ai-history-action";
+import {
+  UI_CRYPTO_OPTIONS,
+  UI_STOCK_OPTIONS,
+} from "@/constants/market-constant";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +65,12 @@ function getFeedbackPriority(feedback: AIAnalysisFeedback | null) {
   if (feedback === null) return 0;
   if (feedback === "inconclusive") return 1;
   return 2;
+}
+
+function getHistoryAssetName(entry: AIAnalysisHistoryEntry) {
+  const assets =
+    entry.asset_type === "crypto" ? UI_CRYPTO_OPTIONS : UI_STOCK_OPTIONS;
+  return assets.find((asset) => asset.symbol === entry.symbol)?.name;
 }
 
 function FeedbackControl({ entry }: { entry: AIAnalysisHistoryEntry }) {
@@ -213,7 +223,10 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
             <CardTitle className="text-base">
               {entry.symbol}{" "}
               <span className="font-normal text-muted-foreground">
-                ({entry.asset_type === "crypto" ? "Kripto" : "Saham"})
+                (
+                {getHistoryAssetName(entry) ??
+                  (entry.asset_type === "crypto" ? "Kripto" : "Saham")}
+                )
               </span>
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -358,8 +371,10 @@ export function AIAnalysisHistory({
     .filter((entry) => {
       const matchesStrategy =
         !selectedStrategy || entry.strategy === selectedStrategy;
+      const assetName = getHistoryAssetName(entry);
       const searchableText = [
         entry.symbol,
+        assetName,
         entry.asset_type === "crypto" ? "Kripto" : "Saham",
         entry.strategy,
         STRATEGY_LABELS[entry.strategy],
