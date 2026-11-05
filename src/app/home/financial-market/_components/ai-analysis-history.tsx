@@ -102,7 +102,7 @@ function FeedbackControl({ entry }: { entry: AIAnalysisHistoryEntry }) {
                 "bg-emerald-600 text-white hover:bg-emerald-700",
               feedback === value &&
                 value === "failure" &&
-                "bg-destructive text-destructive-foreground",
+                "bg-rose-600 text-destructive-foreground hover:bg-rose-700",
             )}
           >
             <Icon />
