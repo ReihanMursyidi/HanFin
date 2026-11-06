@@ -13,16 +13,9 @@ const outfit = Outfit({
   display: "swap",
 });
 
-const notoSansHeading = Noto_Sans({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  display: "swap",
-});
-
 const notoSans = Noto_Sans({
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-noto-sans",
+  variable: "--font-heading",
   display: "swap",
 });
 
@@ -40,7 +33,6 @@ const geistMono = Geist_Mono({
 
 const fontVariables = cn(
   outfit.variable,
-  notoSansHeading.variable,
   notoSans.variable,
   geistSans.variable,
   geistMono.variable,
