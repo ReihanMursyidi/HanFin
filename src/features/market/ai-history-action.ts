@@ -27,6 +27,55 @@ const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
     .optional(),
 });
 
+async function getStrategyMetrics(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<
+  Record<(typeof TRADING_STRATEGIES)[number], AIAnalysisStrategyMetric>
+> {
+  const evaluationResults = await Promise.all(
+    TRADING_STRATEGIES.map((strategy) =>
+      supabase
+        .from("ai_market_analysis_history")
+        .select("feedback")
+        .eq("user_id", userId)
+        .eq("strategy", strategy)
+        .in("feedback", ["success", "failure"])
+        .order("reviewed_at", { ascending: false })
+        .limit(AI_ANALYSIS_EVALUATION_LIMIT),
+    ),
+  );
+
+  return Object.fromEntries(
+    TRADING_STRATEGIES.map((strategy, index) => {
+      const result = evaluationResults[index];
+      if (result.error) {
+        throw new Error(
+          `Failed to calculate ${strategy} win rate: ${result.error.message}`,
+        );
+      }
+      if (result.data === null) {
+        throw new Error(`${strategy} evaluation data was not returned`);
+      }
+
+      const successfulCount = result.data.filter(
+        (row) => row.feedback === "success",
+      ).length;
+      const evaluatedCount = result.data.length;
+
+      const metric: AIAnalysisStrategyMetric = {
+        winRate:
+          evaluatedCount > 0 ? (successfulCount / evaluatedCount) * 100 : null,
+        evaluatedCount,
+        successfulCount,
+        failureCount: evaluatedCount - successfulCount,
+      };
+
+      return [strategy, metric];
+    }),
+  ) as Record<(typeof TRADING_STRATEGIES)[number], AIAnalysisStrategyMetric>;
+}
+
 export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> {
   const supabase = await createClient();
   const {
@@ -34,7 +83,7 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const [historyResult, countResult, evaluationResults] = await Promise.all([
+  const [historyResult, countResult, strategyMetrics] = await Promise.all([
     supabase
       .from("ai_market_analysis_history")
       .select(
@@ -47,18 +96,7 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
       .from("ai_market_analysis_history")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id),
-    Promise.all(
-      TRADING_STRATEGIES.map((strategy) =>
-        supabase
-          .from("ai_market_analysis_history")
-          .select("feedback")
-          .eq("user_id", user.id)
-          .eq("strategy", strategy)
-          .in("feedback", ["success", "failure"])
-          .order("reviewed_at", { ascending: false })
-          .limit(AI_ANALYSIS_EVALUATION_LIMIT),
-      ),
-    ),
+    getStrategyMetrics(supabase, user.id),
   ]);
 
   if (historyResult.error) {
@@ -77,36 +115,6 @@ export async function getAIAnalysisHistory(): Promise<AIAnalysisHistorySummary> 
   if (historyResult.data === null) {
     throw new Error("AI analysis history data was not returned");
   }
-
-  const strategyMetrics = Object.fromEntries(
-    TRADING_STRATEGIES.map((strategy, index) => {
-      const result = evaluationResults[index];
-      if (result.error) {
-        throw new Error(
-          `Failed to calculate ${strategy} win rate: ${result.error.message}`,
-        );
-      }
-      if (result.data === null) {
-        throw new Error(`${strategy} evaluation data was not returned`);
-      }
-
-      const rows = result.data;
-      const successfulCount = rows.filter(
-        (row) => row.feedback === "success",
-      ).length;
-      const evaluatedCount = rows.length;
-
-      const metric: AIAnalysisStrategyMetric = {
-        winRate:
-          evaluatedCount > 0 ? (successfulCount / evaluatedCount) * 100 : null,
-        evaluatedCount,
-        successfulCount,
-        failureCount: evaluatedCount - successfulCount,
-      };
-
-      return [strategy, metric];
-    }),
-  ) as Record<(typeof TRADING_STRATEGIES)[number], AIAnalysisStrategyMetric>;
 
   const entries = historyResult.data.map((row) => ({
     ...row,
