@@ -136,7 +136,9 @@ export const getCryptoChartData = unstable_cache(
           const lastOpenTime = Number(batch[batch.length - 1][0]);
           const followingStartTime = lastOpenTime + 1;
           if (followingStartTime <= nextStartTime) {
-            throw new Error("Binance mengembalikan rentang candle yang tidak valid");
+            throw new Error(
+              "Binance mengembalikan rentang candle yang tidak valid",
+            );
           }
           nextStartTime = followingStartTime;
 
@@ -146,7 +148,7 @@ export const getCryptoChartData = unstable_cache(
 
       const seenTimes = new Set<string>();
       const result: OHLCData[] = [];
-      const isIntraday = interval === "15m" || interval === "1h";
+      const isIntraday = ["5m", "15m", "1h", "4h"].includes(interval);
 
       for (const kline of klines) {
         const dateObj = new Date(Number(kline[0]));
@@ -174,7 +176,7 @@ export const getCryptoChartData = unstable_cache(
     }
   },
   ["crypto-chart-klines"],
-  { revalidate: 3600 },
+  { revalidate: 60 },
 );
 
 // ==== STOCKS MARKET (VIA YAHOO FINANCE) ====
@@ -234,15 +236,16 @@ export async function getStockMarketData(): Promise<MarketAsset[]> {
 export async function getStockChartData(
   symbol: string,
   period1: string,
-  interval: "1d" | "1wk" | "1mo" | "1h" | "15m" = "1d",
+  interval: "1d" | "1wk" | "1mo" | "1h" | "15m" | "5m" | "4h" = "1d",
 ): Promise<OHLCData[]> {
   try {
     const yahooSymbol = symbol === "IHSG" ? "^JKSE" : `${symbol}.JK`;
+    const sourceInterval = interval === "4h" ? "1h" : interval;
 
     const chartResult = await yahooFinance.chart(yahooSymbol, {
       period1: new Date(period1),
       period2: new Date(),
-      interval,
+      interval: sourceInterval,
       return: "array",
     });
 
@@ -261,9 +264,9 @@ export async function getStockChartData(
         q.close !== null,
     );
 
-    const isIntraday = interval === "15m" || interval === "1h";
+    const isIntraday = ["5m", "15m", "1h", "4h"].includes(interval);
 
-    return validQuotes.map((data): OHLCData => {
+    const candles = validQuotes.map((data): OHLCData => {
       const dateObj = new Date(data.date);
       const timeStr = isIntraday
         ? dateObj.toISOString().replace("T", " ").substring(0, 16)
@@ -277,6 +280,37 @@ export async function getStockChartData(
         close: Number(data.close),
         volume: Number(data.volume || 0),
       };
+    });
+
+    if (interval !== "4h") return candles;
+
+    const candlesByDay = new Map<string, OHLCData[]>();
+    for (const candle of candles) {
+      const day = candle.time.slice(0, 10);
+      const dailyCandles = candlesByDay.get(day) ?? [];
+      dailyCandles.push(candle);
+      candlesByDay.set(day, dailyCandles);
+    }
+
+    return [...candlesByDay.values()].flatMap((dailyCandles) => {
+      const aggregated: OHLCData[] = [];
+      for (let index = 0; index < dailyCandles.length; index += 4) {
+        const group = dailyCandles.slice(index, index + 4);
+        const first = group[0];
+        const last = group[group.length - 1];
+        aggregated.push({
+          time: first.time,
+          open: first.open,
+          high: Math.max(...group.map((candle) => candle.high)),
+          low: Math.min(...group.map((candle) => candle.low)),
+          close: last.close,
+          volume: group.reduce(
+            (total, candle) => total + (candle.volume ?? 0),
+            0,
+          ),
+        });
+      }
+      return aggregated;
     });
   } catch (error) {
     console.error(`Stock Chart Error for ${symbol}:`, error);

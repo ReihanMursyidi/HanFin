@@ -265,7 +265,7 @@ export function AiPredictorCard({
                 Swing Trade (Mingguan / 1D)
               </SelectItem>
               <SelectItem value="investing">
-                Invest / Position (Jangka Panjang / 1W)
+                Buy & Hold (Jangka Panjang / 1W)
               </SelectItem>
             </SelectContent>
           </Select>
@@ -384,7 +384,9 @@ export function AiPredictorCard({
             <div className="flex items-center justify-between rounded-md bg-muted/30 px-2.5 py-2 text-[11px]">
               <span className="text-muted-foreground">ATR (14 RMA)</span>
               <span className="font-semibold">
-                {formatCurrency(analysis.atrValue, currency)}
+                {analysis.atrValue === null
+                  ? "Tidak tersedia"
+                  : formatCurrency(analysis.atrValue, currency)}
               </span>
             </div>
 
@@ -452,9 +454,9 @@ export function AiPredictorCard({
                 )
               </p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px] leading-relaxed">
-                <li>{analysis.trendAnalysis}</li>
-                <li>{analysis.momentumAnalysis}</li>
-                <li>{analysis.volumeAnalysis}</li>
+                <li>Arah harga: {analysis.trendAnalysis}</li>
+                <li>Kekuatan pergerakan: {analysis.momentumAnalysis}</li>
+                <li>Aktivitas transaksi: {analysis.volumeAnalysis}</li>
               </ul>
             </div>
 
