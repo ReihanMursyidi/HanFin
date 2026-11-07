@@ -10,7 +10,25 @@ import {
   Stochastic,
   VWAP,
 } from "technicalindicators";
-import type { AIAnalysisRequest, OHLCData, TradingStrategy } from "./types";
+import type {
+  AIAnalysisRequest,
+  OHLCData,
+  TradingStrategy,
+  TrendIndicator,
+} from "./types";
+
+export interface TrendCalculationOptions {
+  indicator: TrendIndicator;
+  fastPeriod: number;
+  slowPeriod: number;
+}
+
+export function getStrategyTrendPeriods(strategy: TradingStrategy) {
+  if (strategy === "scalping") return { fastPeriod: 5, slowPeriod: 8 };
+  if (strategy === "day_trading") return { fastPeriod: 13, slowPeriod: 21 };
+  if (strategy === "investing") return { fastPeriod: 50, slowPeriod: 200 };
+  return { fastPeriod: 20, slowPeriod: 50 };
+}
 
 export interface TechnicalAnalysisResult {
   symbol: string;
@@ -57,11 +75,10 @@ export function calculateTechnicalIndicators(
   candles: OHLCData[],
   request: AIAnalysisRequest,
   timeframeUsed: string = "1d",
+  trendOptions?: TrendCalculationOptions,
 ): TechnicalAnalysisResult {
-  if (!candles || candles.length < 20) {
-    throw new Error(
-      "Data candlestick tidak mencukupi untuk analisis teknikal.",
-    );
+  if (!candles || candles.length < 10) {
+    throw new Error("Minimal 10 candle diperlukan untuk analisis teknikal.");
   }
 
   const closes = candles.map((c) => c.close);
@@ -78,22 +95,9 @@ export function calculateTechnicalIndicators(
   const atrValue = atrValues[atrValues.length - 1] ?? null;
 
   // A. DUAL PERIOD STRATEGY
-  let fastPeriod = 20;
-  let slowPeriod = 50;
-
-  if (request.strategy === "scalping") {
-    fastPeriod = 5;
-    slowPeriod = 8;
-  } else if (request.strategy === "day_trading") {
-    fastPeriod = 13;
-    slowPeriod = 21;
-  } else if (request.strategy === "swing_trading") {
-    fastPeriod = 20;
-    slowPeriod = 50;
-  } else if (request.strategy === "investing") {
-    fastPeriod = 50;
-    slowPeriod = 200;
-  }
+  const { fastPeriod, slowPeriod } =
+    trendOptions ?? getStrategyTrendPeriods(request.strategy);
+  const trendIndicator = trendOptions?.indicator ?? request.trend_indicator;
 
   // B. TREND INDICATOR
   let fastValue: number | null = null;
@@ -102,7 +106,7 @@ export function calculateTechnicalIndicators(
   let trendSignal: "Bullish" | "Bearish" | "Neutral" = "Neutral";
   let crossoverStatus = "Konfirmasi Tren Netral";
 
-  if (request.trend_indicator === "ADX") {
+  if (trendIndicator === "ADX") {
     const adxResult = ADX.calculate({
       high: highs,
       low: lows,
@@ -120,7 +124,7 @@ export function calculateTechnicalIndicators(
         crossoverStatus = "ADX -DI diatas +DI (Bearish Trend)";
       }
     }
-  } else if (request.trend_indicator === "EMA") {
+  } else if (trendIndicator === "EMA") {
     const fastEma = EMA.calculate({ period: fastPeriod, values: closes });
     const slowEma = EMA.calculate({ period: slowPeriod, values: closes });
 
@@ -128,12 +132,26 @@ export function calculateTechnicalIndicators(
     slowValue = slowEma[slowEma.length - 1] || null;
 
     if (fastValue && slowValue) {
-      if (fastValue > slowValue && lastClose > fastValue) {
+      if (
+        fastPeriod === slowPeriod
+          ? lastClose > fastValue
+          : fastValue > slowValue && lastClose > fastValue
+      ) {
         trendSignal = "Bullish";
-        crossoverStatus = `Bullish Crossover (EMA ${fastPeriod} diatas EMA ${slowPeriod})`;
-      } else if (fastValue < slowValue && lastClose < fastValue) {
+        crossoverStatus =
+          fastPeriod === slowPeriod
+            ? `Harga di atas EMA ${fastPeriod}`
+            : `Bullish Crossover (EMA ${fastPeriod} diatas EMA ${slowPeriod})`;
+      } else if (
+        fastPeriod === slowPeriod
+          ? lastClose < fastValue
+          : fastValue < slowValue && lastClose < fastValue
+      ) {
         trendSignal = "Bearish";
-        crossoverStatus = `Bearish Crossover (EMA ${fastPeriod} dibawah EMA ${slowPeriod})`;
+        crossoverStatus =
+          fastPeriod === slowPeriod
+            ? `Harga di bawah EMA ${fastPeriod}`
+            : `Bearish Crossover (EMA ${fastPeriod} dibawah EMA ${slowPeriod})`;
       }
     }
   } else {
@@ -144,18 +162,30 @@ export function calculateTechnicalIndicators(
     slowValue = slowSma[slowSma.length - 1] || null;
 
     if (fastValue && slowValue) {
-      if (fastValue > slowValue && lastClose > fastValue) {
+      if (
+        fastPeriod === slowPeriod
+          ? lastClose > fastValue
+          : fastValue > slowValue && lastClose > fastValue
+      ) {
         trendSignal = "Bullish";
         crossoverStatus =
-          request.strategy === "investing"
-            ? "Golden Cross (SMA 50 diatas SMA 200)"
-            : `Bullish Alignment (SMA ${fastPeriod} diatas SMA ${slowPeriod})`;
-      } else if (fastValue < slowValue && lastClose < fastValue) {
+          fastPeriod === slowPeriod
+            ? `Harga di atas SMA ${fastPeriod}`
+            : request.strategy === "investing"
+              ? "Golden Cross (SMA 50 diatas SMA 200)"
+              : `Bullish Alignment (SMA ${fastPeriod} diatas SMA ${slowPeriod})`;
+      } else if (
+        fastPeriod === slowPeriod
+          ? lastClose < fastValue
+          : fastValue < slowValue && lastClose < fastValue
+      ) {
         trendSignal = "Bearish";
         crossoverStatus =
-          request.strategy === "investing"
-            ? "Death Cross (SMA 50 dibawah SMA 200)"
-            : `Bearish Alignment (SMA ${fastPeriod} dibawah SMA ${slowPeriod})`;
+          fastPeriod === slowPeriod
+            ? `Harga di bawah SMA ${fastPeriod}`
+            : request.strategy === "investing"
+              ? "Death Cross (SMA 50 dibawah SMA 200)"
+              : `Bearish Alignment (SMA ${fastPeriod} dibawah SMA ${slowPeriod})`;
       }
     }
   }
@@ -312,7 +342,7 @@ export function calculateTechnicalIndicators(
     bearishCount,
     consensusSignal,
     trend: {
-      name: request.trend_indicator,
+      name: trendIndicator,
       fastPeriod,
       slowPeriod,
       fastValue,
