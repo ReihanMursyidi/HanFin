@@ -48,6 +48,8 @@ const STATIC_STOP_LOSS_PERCENTAGES = {
   investing: 10,
 } as const;
 
+const YAHOO_INTRADAY_LOOKBACK_DAYS = 700;
+
 type AnalysisInterval = "5m" | "15m" | "1h" | "4h" | "1d" | "1wk";
 type StrategyTimeframe = (typeof TIMEFRAMES)[keyof typeof TIMEFRAMES];
 type SignalStatus = NonNullable<AIAnalysisResponse["signalStatus"]>;
@@ -111,7 +113,10 @@ async function prepareAnalysisContext(
           .slice(0, 10);
   const stockExecutionStartDate =
     request.strategy === "swing_trading"
-      ? new Date(endDate.getTime() - 730 * 24 * 60 * 60 * 1000)
+      ? new Date(
+          endDate.getTime() -
+            YAHOO_INTRADAY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+        )
           .toISOString()
           .slice(0, 10)
       : startDate;
