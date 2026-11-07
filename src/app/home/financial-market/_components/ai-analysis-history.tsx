@@ -231,7 +231,10 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               {formatDate(entry.created_at)} · {STRATEGY_LABELS[entry.strategy]}{" "}
-              · Timeframe {entry.timeframe}
+              ·{" "}
+              {analysis.anchorTimeframe && analysis.executionTimeframe
+                ? `Tren utama ${analysis.anchorTimeframe} · Titik transaksi ${analysis.executionTimeframe}`
+                : `Timeframe ${entry.timeframe}`}
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs">
@@ -262,7 +265,9 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
           <div>
             <p className="text-muted-foreground">ATR (14 RMA)</p>
             <p className="mt-1 font-semibold">
-              {formatCurrency(analysis.atrValue, entry.currency)}
+              {analysis.atrValue === null
+                ? "Tidak tersedia"
+                : formatCurrency(analysis.atrValue, entry.currency)}
             </p>
           </div>
           {hasValidTargetPrices ? (
@@ -305,9 +310,9 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
             Detail analisis dan snapshot ({entry.candle_count} candle)
           </summary>
           <div className="mt-3 space-y-2 text-muted-foreground">
-            <p>{analysis.trendAnalysis}</p>
-            <p>{analysis.momentumAnalysis}</p>
-            <p>{analysis.volumeAnalysis}</p>
+            <p>Arah harga: {analysis.trendAnalysis}</p>
+            <p>Kekuatan pergerakan: {analysis.momentumAnalysis}</p>
+            <p>Aktivitas transaksi: {analysis.volumeAnalysis}</p>
             <div className="grid gap-1 border-t pt-2 sm:grid-cols-2">
               <p>
                 Support:{" "}
@@ -375,6 +380,9 @@ export function AIAnalysisHistory({
       const searchableText = [
         entry.symbol,
         assetName,
+        entry.analysis_result.anchorTimeframe,
+        entry.analysis_result.executionTimeframe,
+        entry.analysis_result.anchorTrend,
         entry.asset_type === "crypto" ? "Kripto" : "Saham",
         entry.strategy,
         STRATEGY_LABELS[entry.strategy],

@@ -15,7 +15,21 @@ import {
 
 const historyLimit = 100;
 const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
-  atrValue: z.number(),
+  atrValue: z.number().nullable(),
+  signalStatus: z
+    .enum([
+      "approved",
+      "rejected_against_major_trend",
+      "wait_for_major_trend",
+      "wait_for_execution_signal",
+      "rejected_invalid_risk_setup",
+    ])
+    .optional(),
+  anchorTrend: z.enum(["Bullish", "Bearish", "Neutral"]).optional(),
+  anchorTrendMethod: z.string().optional(),
+  anchorTimeframe: z.string().optional(),
+  executionTimeframe: z.string().optional(),
+  stopMethod: z.enum(["atr", "static_percentage"]).optional(),
   targetPrices: z
     .object({
       entryPrice: z.number(),
