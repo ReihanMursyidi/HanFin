@@ -63,6 +63,12 @@ export const STOCK_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
+    symbol: "TMPO.JK",
+    shortSymbol: "TMPO",
+    name: "Tempo Inti Media",
+    isTradeable: true,
+  },
+  {
     symbol: "ASII.JK",
     shortSymbol: "ASII",
     name: "Astra International",
@@ -71,19 +77,19 @@ export const STOCK_ASSETS: AssetConfig[] = [
   {
     symbol: "BYAN.JK",
     shortSymbol: "BYAN",
-    name: "Bayan Resources Tbk.",
+    name: "Bayan Resources",
     isTradeable: true,
   },
   {
     symbol: "BUMI.JK",
     shortSymbol: "BUMI",
-    name: "PT Bumi Resources Tbk Class A",
+    name: "Bumi Resources",
     isTradeable: true,
   },
   {
     symbol: "BSDE.JK",
     shortSymbol: "BSDE",
-    name: "PT Bumi Serpong Damai Tbk",
+    name: "Bumi Serpong Damai",
     isTradeable: true,
   },
 ];
@@ -184,6 +190,7 @@ export function getAssetLogoUrl(symbol: string, assetType: string): string {
     BMRI: "https://s3-symbol-logo.tradingview.com/bank-mandiri--big.svg",
     BUMI: "https://s3-symbol-logo.tradingview.com/bumi-resources-minerals--big.svg",
     BSDE: "https://s3-symbol-logo.tradingview.com/bumi-serpong-damai--big.svg",
+    TMPO: "https://s3-symbol-logo.tradingview.com/tempo-intimedia-tbk--big.svg",
   };
 
   return stockLogos[cleanSymbol] || "";
