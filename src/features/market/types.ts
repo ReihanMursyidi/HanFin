@@ -111,7 +111,18 @@ export interface AIAnalysisResponse {
   summary: string;
   recommendation: "Beli" | "Jual" | "Tahan" | "Wait & See";
   riskLevel: "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi";
-  atrValue: number;
+  atrValue: number | null;
+  signalStatus?:
+    | "approved"
+    | "rejected_against_major_trend"
+    | "wait_for_major_trend"
+    | "wait_for_execution_signal"
+    | "rejected_invalid_risk_setup";
+  anchorTrend?: "Bullish" | "Bearish" | "Neutral";
+  anchorTrendMethod?: string;
+  anchorTimeframe?: string;
+  executionTimeframe?: string;
+  stopMethod?: "atr" | "static_percentage";
   targetPrices?: {
     entryPrice: number;
     takeProfit: number;
