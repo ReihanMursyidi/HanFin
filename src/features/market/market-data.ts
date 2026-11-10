@@ -236,7 +236,15 @@ export async function getStockMarketData(): Promise<MarketAsset[]> {
 export async function getStockChartData(
   symbol: string,
   period1: string,
-  interval: "1d" | "1wk" | "1mo" | "1h" | "15m" | "5m" | "4h" = "1d",
+  interval:
+    | "1d"
+    | "1wk"
+    | "1mo"
+    | "1h"
+    | "30m"
+    | "15m"
+    | "5m"
+    | "4h" = "1d",
 ): Promise<OHLCData[]> {
   try {
     const yahooSymbol = symbol === "IHSG" ? "^JKSE" : `${symbol}.JK`;
@@ -264,7 +272,7 @@ export async function getStockChartData(
         q.close !== null,
     );
 
-    const isIntraday = ["5m", "15m", "1h", "4h"].includes(interval);
+    const isIntraday = ["5m", "15m", "30m", "1h", "4h"].includes(interval);
 
     const candles = validQuotes.map((data): OHLCData => {
       const dateObj = new Date(data.date);

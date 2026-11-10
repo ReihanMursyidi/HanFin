@@ -36,7 +36,7 @@ const RISK_PARAMETERS = {
 
 const TIMEFRAMES = {
   scalping: { anchor: "15m", execution: "5m", lookbackDays: 7 },
-  day_trading: { anchor: "1h", execution: "15m", lookbackDays: 30 },
+  day_trading: { anchor: "1h", execution: "30m", lookbackDays: 30 },
   swing_trading: { anchor: "1d", execution: "4h", lookbackDays: 365 * 3 },
   investing: { anchor: "1wk", execution: "1d", startDate: "2020-01-01" },
 } as const;
@@ -50,7 +50,7 @@ const STATIC_STOP_LOSS_PERCENTAGES = {
 
 const YAHOO_INTRADAY_LOOKBACK_DAYS = 700;
 
-type AnalysisInterval = "5m" | "15m" | "1h" | "4h" | "1d" | "1wk";
+type AnalysisInterval = "5m" | "15m" | "30m" | "1h" | "4h" | "1d" | "1wk";
 type StrategyTimeframe = (typeof TIMEFRAMES)[keyof typeof TIMEFRAMES];
 type SignalStatus = NonNullable<AIAnalysisResponse["signalStatus"]>;
 type MarketAnalysisContext = {
