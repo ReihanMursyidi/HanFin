@@ -105,6 +105,12 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
   { symbol: "BNBUSDT", shortSymbol: "BNB", name: "BNB", isTradeable: true },
   { symbol: "XRPUSDT", shortSymbol: "XRP", name: "Ripple", isTradeable: true },
   { symbol: "SOLUSDT", shortSymbol: "SOL", name: "Solana", isTradeable: true },
+  {
+    symbol: "RENDERUSDT",
+    shortSymbol: "RENDER",
+    name: "Render",
+    isTradeable: true,
+  },
   { symbol: "TRXUSDT", shortSymbol: "TRX", name: "TRON", isTradeable: true },
   {
     symbol: "HYPEUSDT",
