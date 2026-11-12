@@ -6,9 +6,9 @@ import {
 } from "@/features/market/action";
 import {
   getExchangeRateUSDIDR,
-  getStockChartData,
   getStockMarketData,
 } from "@/features/market/market-data";
+import { getStockChartData } from "@/features/market/stock-market-data";
 import { convertCurrency } from "@/lib/format";
 import { MarketPageView } from "../_components/market-page-view";
 import { Currency } from "@/features/market/types";

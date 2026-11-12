@@ -8,10 +8,10 @@ import {
 } from "./types";
 import {
   getCryptoChartData,
-  getStockChartData,
   getBybitLinearFuturesChartData,
   getExchangeRateUSDIDR,
 } from "./market-data";
+import { getStockChartData } from "./stock-market-data";
 import {
   checkMomentumAndReversal,
   calculateTechnicalIndicators,

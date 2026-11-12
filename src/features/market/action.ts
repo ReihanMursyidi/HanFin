@@ -5,9 +5,9 @@ import {
   getCryptoChartData,
   getCryptoMarketData,
   getExchangeRateUSDIDR,
-  getStockChartData,
   getStockMarketData,
 } from "./market-data";
+import { getStockChartData } from "./stock-market-data";
 import type {
   AssetType,
   Currency,

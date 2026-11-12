@@ -1,7 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { MarketAsset, OHLCData } from "./types";
 import YahooFinance from "yahoo-finance2";
-import { FALLBACK_USD_IDR_RATE, STOCK_ASSETS } from "@/constants/market-constant";
+import {
+  FALLBACK_USD_IDR_RATE,
+  STOCK_ASSETS,
+} from "@/constants/market-constant";
 
 const yahooFinance = new YahooFinance({
   suppressNotices: ["ripHistorical", "yahooSurvey"],
@@ -29,7 +32,7 @@ export const getExchangeRateUSDIDR = unstable_cache(
   { revalidate: 300 },
 );
 
-// ==== STOCKS MARKET (VIA YAHOO FINANCE) ====
+// STOCKS MARKET (VIA YAHOO FINANCE)
 type YahooStockQuote = {
   symbol?: string;
   longName?: string;

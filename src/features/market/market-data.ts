@@ -9,7 +9,6 @@ import {
 } from "@/constants/market-constant";
 import {
   getExchangeRateUSDIDR as loadExchangeRateUSDIDR,
-  getStockChartData as loadStockChartData,
   getStockMarketData as loadStockMarketData,
 } from "./stock-market-data";
 
@@ -304,12 +303,4 @@ export async function getExchangeRateUSDIDR(): Promise<number> {
 
 export async function getStockMarketData(): Promise<MarketAsset[]> {
   return loadStockMarketData();
-}
-
-export async function getStockChartData(
-  symbol: string,
-  period1: string,
-  interval: "1d" | "1wk" | "1mo" | "1h" | "30m" | "15m" | "5m" | "4h" = "1d",
-): Promise<OHLCData[]> {
-  return loadStockChartData(symbol, period1, interval);
 }
