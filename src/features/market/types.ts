@@ -117,6 +117,8 @@ export interface AIAnalysisResponse {
     | "rejected_against_major_trend"
     | "wait_for_major_trend"
     | "wait_for_execution_signal"
+    | "wait_for_weak_adx"
+    | "wait_for_momentum_reversal"
     | "rejected_invalid_risk_setup";
   anchorTrend?: "Bullish" | "Bearish" | "Neutral";
   anchorTrendMethod?: string;
@@ -140,7 +142,10 @@ export interface AIAnalysisResponse {
 }
 
 export type AIAnalysisFailureReason =
-  "high_demand" | "daily_quota_exceeded" | "unknown";
+  | "high_demand"
+  | "daily_quota_exceeded"
+  | "market_data_unavailable"
+  | "unknown";
 
 export type AIAnalysisResult =
   | { success: true; data: AIAnalysisResponse }

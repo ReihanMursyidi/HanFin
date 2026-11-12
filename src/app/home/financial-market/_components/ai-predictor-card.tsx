@@ -126,7 +126,9 @@ export function AiPredictorCard({
               ? "Model AI sedang mengalami permintaan tinggi atau batas permintaan sementara tercapai. Coba lagi beberapa menit."
               : result.reason === "daily_quota_exceeded"
                 ? "Kuota token harian AI telah habis. Silakan coba lagi setelah kuota direset."
-                : "Analisis AI gagal diproses. Silakan coba kembali.";
+                : result.reason === "market_data_unavailable"
+                  ? "Data market untuk analisis tidak berhasil diambil. Coba lagi beberapa saat."
+                  : "Analisis AI gagal diproses. Silakan coba kembali.";
         toast.error(message);
         return;
       }
@@ -293,7 +295,6 @@ export function AiPredictorCard({
               <SelectContent>
                 <SelectItem value="SMA">SMA</SelectItem>
                 <SelectItem value="EMA">EMA</SelectItem>
-                <SelectItem value="ADX">ADX</SelectItem>
               </SelectContent>
             </Select>
           </div>

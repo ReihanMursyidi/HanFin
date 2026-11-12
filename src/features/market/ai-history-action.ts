@@ -22,6 +22,8 @@ const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
       "rejected_against_major_trend",
       "wait_for_major_trend",
       "wait_for_execution_signal",
+      "wait_for_weak_adx",
+      "wait_for_momentum_reversal",
       "rejected_invalid_risk_setup",
     ])
     .optional(),

@@ -151,6 +151,8 @@ export const BINANCE_ENDPOINTS = [
   "https://api.binance.com",
 ] as const;
 
+export const BYBIT_API_BASE_URL = "https://api.bybit.id";
+
 export const UI_STOCK_OPTIONS = STOCK_ASSETS.map((s) => ({
   symbol: s.shortSymbol,
   name: s.name,
