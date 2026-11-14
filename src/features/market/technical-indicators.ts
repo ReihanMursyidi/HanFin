@@ -37,8 +37,8 @@ export function getStrategyADXSettings(strategy: TradingStrategy) {
 export function getStrategyTrendPeriods(strategy: TradingStrategy) {
   if (strategy === "scalping") return { fastPeriod: 5, slowPeriod: 8 };
   if (strategy === "day_trading") return { fastPeriod: 13, slowPeriod: 21 };
-  if (strategy === "investing") return { fastPeriod: 50, slowPeriod: 200 };
-  return { fastPeriod: 20, slowPeriod: 50 };
+  if (strategy === "investing") return { fastPeriod: 89, slowPeriod: 144 };
+  return { fastPeriod: 34, slowPeriod: 55 };
 }
 
 export interface TechnicalAnalysisResult {

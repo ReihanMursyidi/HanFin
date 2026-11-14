@@ -38,22 +38,15 @@ export const STOCK_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
-    symbol: "DCII.JK",
-    shortSymbol: "DCII",
-    name: "DCI Indonesia",
-    isTradeable: true,
-  },
-  {
     symbol: "BMRI.JK",
     shortSymbol: "BMRI",
     name: "Bank Mandiri",
     isTradeable: true,
   },
-
   {
-    symbol: "BREN.JK",
-    shortSymbol: "BREN",
-    name: "Barito Renewables Energy",
+    symbol: "DCII.JK",
+    shortSymbol: "DCII",
+    name: "DCI Indonesia",
     isTradeable: true,
   },
   {
@@ -63,21 +56,51 @@ export const STOCK_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
-    symbol: "TMPO.JK",
-    shortSymbol: "TMPO",
-    name: "Tempo Inti Media",
-    isTradeable: true,
-  },
-  {
     symbol: "ASII.JK",
     shortSymbol: "ASII",
     name: "Astra International",
     isTradeable: true,
   },
   {
-    symbol: "BYAN.JK",
-    shortSymbol: "BYAN",
-    name: "Bayan Resources",
+    symbol: "BBNI.JK",
+    shortSymbol: "BBNI",
+    name: "Bank Negara Indonesia",
+    isTradeable: true,
+  },
+  {
+    symbol: "BREN.JK",
+    shortSymbol: "BREN",
+    name: "Barito Renewables Energy",
+    isTradeable: true,
+  },
+  {
+    symbol: "GOTO.JK",
+    shortSymbol: "GOTO",
+    name: "GoTo Gojek Tokopedia",
+    isTradeable: true,
+  },
+  {
+    symbol: "ISAT.JK",
+    shortSymbol: "ISAT",
+    name: "PT Indosat",
+    isTradeable: true,
+  },
+  {
+    symbol: "EXCL.JK",
+    shortSymbol: "EXCL",
+    name: "PT XLSMART Telecom Sejahtera",
+    isTradeable: true,
+  },
+  {
+    symbol: "BBTN.JK",
+    shortSymbol: "BBTN",
+    name: "Bank Tabungan Negara",
+    isTradeable: true,
+  },
+  {
+    symbol: "BSDE.JK",
+    shortSymbol: "BSDE",
+    name: "Bumi Serpong Damai",
     isTradeable: true,
   },
   {
@@ -87,9 +110,9 @@ export const STOCK_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
-    symbol: "BSDE.JK",
-    shortSymbol: "BSDE",
-    name: "Bumi Serpong Damai",
+    symbol: "BYAN.JK",
+    shortSymbol: "BYAN",
+    name: "Bayan Resources",
     isTradeable: true,
   },
 ];
@@ -105,17 +128,29 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
   { symbol: "BNBUSDT", shortSymbol: "BNB", name: "BNB", isTradeable: true },
   { symbol: "XRPUSDT", shortSymbol: "XRP", name: "Ripple", isTradeable: true },
   { symbol: "SOLUSDT", shortSymbol: "SOL", name: "Solana", isTradeable: true },
-  {
-    symbol: "RENDERUSDT",
-    shortSymbol: "RENDER",
-    name: "Render",
-    isTradeable: true,
-  },
   { symbol: "TRXUSDT", shortSymbol: "TRX", name: "TRON", isTradeable: true },
   {
     symbol: "HYPEUSDT",
     shortSymbol: "HYPE",
     name: "Hyperliquid",
+    isTradeable: true,
+  },
+  {
+    symbol: "SUIUSDT",
+    shortSymbol: "SUI",
+    name: "Sui",
+    isTradeable: true,
+  },
+  {
+    symbol: "XAUTUSDT",
+    shortSymbol: "XAUT",
+    name: "Tether Gold",
+    isTradeable: true,
+  },
+  {
+    symbol: "ASTERUSDT",
+    shortSymbol: "ASTER",
+    name: "Aster",
     isTradeable: true,
   },
   {
@@ -131,21 +166,21 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
     isTradeable: true,
   },
   {
-    symbol: "ASTERUSDT",
-    shortSymbol: "ASTER",
-    name: "Aster",
+    symbol: "ARBUSDT",
+    shortSymbol: "ARB",
+    name: "Arbitrum",
     isTradeable: true,
   },
   {
-    symbol: "SUIUSDT",
-    shortSymbol: "SUI",
-    name: "Sui",
+    symbol: "POLUSDT",
+    shortSymbol: "POL",
+    name: "Polygon",
     isTradeable: true,
   },
   {
-    symbol: "XAUTUSDT",
-    shortSymbol: "XAUT",
-    name: "Tether Gold",
+    symbol: "RENDERUSDT",
+    shortSymbol: "RENDER",
+    name: "Render",
     isTradeable: true,
   },
 ];
@@ -198,7 +233,7 @@ export function getAssetLogoUrl(symbol: string, assetType: string): string {
     BMRI: "https://s3-symbol-logo.tradingview.com/bank-mandiri--big.svg",
     BUMI: "https://s3-symbol-logo.tradingview.com/bumi-resources-minerals--big.svg",
     BSDE: "https://s3-symbol-logo.tradingview.com/bumi-serpong-damai--big.svg",
-    TMPO: "https://s3-symbol-logo.tradingview.com/tempo-intimedia-tbk--big.svg",
+    GOTO: "https://s3-symbol-logo.tradingview.com/goto-gojek-tokopedia-rp-1--big.svg",
   };
 
   return stockLogos[cleanSymbol] || "";
