@@ -13,7 +13,7 @@ import {
 } from "./market-data";
 import { getStockChartData } from "./stock-market-data";
 import {
-  checkMomentumAndReversal,
+  validateSingleMomentum,
   calculateTechnicalIndicators,
   getStrategyTrendPeriods,
 } from "./technical-analysis";
@@ -58,6 +58,7 @@ export type MarketAnalysisContext = {
     isValid: boolean;
     reason: string;
   } | null;
+  anchorRsiBlockReason: string | null;
   atrMultiplier: number;
   riskRewardRatio: number;
 };
@@ -211,15 +212,24 @@ export async function prepareAnalysisContext(
       : techData.consensusSignal === "Potensi Koreksi (Bearish)"
         ? "Bearish"
         : null;
+  const anchorRsi =
+    request.momentum_indicator === "RSI" ? anchorTechData.rsi.value : null;
+  const anchorRsiBlockReason =
+    localDirection === "Bullish" && anchorRsi !== null && anchorRsi > 75
+      ? `RSI Anchor Timeframe ${timeframe.anchor} sebesar ${anchorRsi.toFixed(2)} di atas 75; sinyal Beli ditahan.`
+      : localDirection === "Bearish" && anchorRsi !== null && anchorRsi < 25
+        ? `RSI Anchor Timeframe ${timeframe.anchor} sebesar ${anchorRsi.toFixed(2)} di bawah 25; sinyal Jual ditahan.`
+        : null;
   const momentumValidation =
     localDirection === null
       ? null
-      : checkMomentumAndReversal(
+      : validateSingleMomentum(
           localDirection === "Bullish" ? "LONG" : "SHORT",
           executionCandles.map((candle) => candle.open),
           executionCandles.map((candle) => candle.high),
           executionCandles.map((candle) => candle.low),
           executionCandles.map((candle) => candle.close),
+          executionCandles.map((candle) => candle.volume ?? Number.NaN),
           request.momentum_indicator,
         );
   let signalStatus: SignalStatus;
@@ -231,6 +241,8 @@ export async function prepareAnalysisContext(
     signalStatus = "wait_for_execution_signal";
   } else if (anchorTechData.trend.signal !== localDirection) {
     signalStatus = "rejected_against_major_trend";
+  } else if (anchorRsiBlockReason !== null) {
+    signalStatus = "wait_for_anchor_rsi_extreme";
   } else if (!momentumValidation?.isValid) {
     signalStatus = "wait_for_momentum_reversal";
   } else {
@@ -290,6 +302,7 @@ export async function prepareAnalysisContext(
     anchorTrendMethod,
     marketDataSource,
     momentumValidation,
+    anchorRsiBlockReason,
     atrMultiplier,
     riskRewardRatio,
   };

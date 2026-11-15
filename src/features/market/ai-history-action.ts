@@ -24,6 +24,7 @@ const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
       "wait_for_execution_signal",
       "wait_for_weak_adx",
       "wait_for_momentum_reversal",
+      "wait_for_anchor_rsi_extreme",
       "rejected_invalid_risk_setup",
     ])
     .optional(),

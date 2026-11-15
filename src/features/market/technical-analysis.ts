@@ -7,7 +7,7 @@ export type {
   TechnicalAnalysisResult,
   TrendCalculationOptions,
 } from "./technical-indicators";
-export { checkMomentumAndReversal } from "./momentum-validation";
+export { validateSingleMomentum } from "./momentum-validation";
 export type {
   MomentumReversalValidation,
   MomentumSignalDirection,

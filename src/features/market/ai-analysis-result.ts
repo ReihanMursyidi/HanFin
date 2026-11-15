@@ -32,9 +32,14 @@ export function buildAnalysisPrompt(
     anchorTrendMethod,
     marketDataSource,
     momentumValidation,
+    anchorRsiBlockReason,
     atrMultiplier,
     riskRewardRatio,
   } = context;
+  const anchorMomentumGuidance =
+    request.momentum_indicator === "RSI"
+      ? `RSI(${anchorTechData.rsi.period}) Anchor Timeframe ${timeframe.anchor}: ${anchorTechData.rsi.value?.toFixed(2) ?? "tidak tersedia"}. Filter RSI Anchor: ${anchorRsiBlockReason ?? "tidak menahan sinyal berdasarkan batas ekstrem."}`
+      : `${request.momentum_indicator} hanya dianalisis pada Execution Timeframe ${timeframe.execution}; momentum Anchor Timeframe tidak digunakan.`;
 
   return `
     Kamu adalah Analis Pasar Keuangan Profesional (Financial Market Predictor Agent).
@@ -52,6 +57,7 @@ export function buildAnalysisPrompt(
 
     KONDISI SINYAL TEKNIKAL:
     - Anchor Timeframe ${timeframe.anchor}: tren ${anchorTechData.trend.signal} memakai ${anchorTrendMethod}.
+    - ${anchorMomentumGuidance}
     - Execution Timeframe ${timeframe.execution}: sinyal lokal ${techData.consensusSignal}.
     - Skor konfluensi Execution: ${techData.bullishCount} bullish dan ${techData.bearishCount} bearish dari 3 indikator.
     - Filter kekuatan tren ADX di Execution Timeframe: ADX(${techData.adx.period}) = ${techData.adx.value === null ? "tidak tersedia" : techData.adx.value.toFixed(2)}, ambang > ${techData.adx.threshold}. Filter ${techData.adx.isStrong ? "lolos" : "tidak lolos"}.
@@ -59,6 +65,7 @@ export function buildAnalysisPrompt(
     - Status validasi multi-timeframe: **${signalStatus}**
     - Rekomendasi sistem yang wajib digunakan: **${systemRecommendation}**
     Jangan mengubah status atau rekomendasi sistem.
+    Jika indikator momentum yang dipilih adalah RSI, RSI Anchor Timeframe di atas 75 saat sinyal lokal Bullish atau di bawah 25 saat sinyal lokal Bearish wajib menahan sinyal dengan rekomendasi "Wait & See".
     Jika ADX tidak tersedia atau nilainya tidak lebih besar dari ambang, rekomendasi wajib "Wait & See" dan jelaskan alasannya dengan bahasa sederhana.
     Jika validasi momentum dan reversal gagal, rekomendasi wajib "Wait & See" dan jangan memberikan target transaksi.
 
@@ -170,6 +177,9 @@ export function buildAnalysisResult(
   }
   if (context.momentumValidation && !context.momentumValidation.isValid) {
     summary += ` ${context.momentumValidation.reason} Sistem memilih Wait & See.`;
+  }
+  if (context.anchorRsiBlockReason !== null) {
+    summary += ` ${context.anchorRsiBlockReason} Sistem memilih Wait & See.`;
   }
 
   return {

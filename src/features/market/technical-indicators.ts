@@ -68,6 +68,10 @@ export interface TechnicalAnalysisResult {
     signal: "Bullish" | "Bearish" | "Neutral";
     crossoverStatus: string;
   };
+  rsi: {
+    period: number;
+    value: number | null;
+  };
   momentum: {
     name: string;
     rsiValue: number | null;
@@ -103,6 +107,12 @@ export function calculateTechnicalIndicators(
   const lows = candles.map((c) => c.low);
   const volumes = candles.map((c) => c.volume || 0);
   const lastClose = closes[closes.length - 1];
+  const rsiPeriod = request.strategy === "scalping" ? 7 : 14;
+  const rsiValues =
+    request.momentum_indicator === "RSI"
+      ? RSI.calculate({ period: rsiPeriod, values: closes })
+      : [];
+  const rsiValue = rsiValues[rsiValues.length - 1] ?? null;
   const atrValues = ATR.calculate({
     high: highs,
     low: lows,
@@ -253,10 +263,7 @@ export function calculateTechnicalIndicators(
       momentumSignal = macdHistogram > 0 ? "Bullish" : "Bearish";
     }
   } else {
-    const rsiPeriod = request.strategy === "scalping" ? 7 : 14;
-    const rsiResult = RSI.calculate({ period: rsiPeriod, values: closes });
-
-    lastRsi = rsiResult[rsiResult.length - 1] || null;
+    lastRsi = rsiValue;
 
     if (lastRsi !== null) {
       const overboughtBound = request.strategy === "scalping" ? 75 : 70;
@@ -374,6 +381,10 @@ export function calculateTechnicalIndicators(
       slowValue,
       signal: trendSignal,
       crossoverStatus,
+    },
+    rsi: {
+      period: rsiPeriod,
+      value: rsiValue,
     },
     momentum: {
       name: request.momentum_indicator,
