@@ -19,6 +19,7 @@ const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
   signalStatus: z
     .enum([
       "approved",
+      "approved_sideways",
       "rejected_against_major_trend",
       "wait_for_major_trend",
       "wait_for_execution_signal",
@@ -28,6 +29,7 @@ const storedAnalysisResultSchema = aiAnalysisResponseSchema.extend({
       "rejected_invalid_risk_setup",
     ])
     .optional(),
+  signalMode: z.enum(["SIDEWAYS_BOUNCE"]).optional(),
   anchorTrend: z.enum(["Bullish", "Bearish", "Neutral"]).optional(),
   anchorTrendMethod: z.string().optional(),
   anchorTimeframe: z.string().optional(),

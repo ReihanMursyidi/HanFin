@@ -13,10 +13,12 @@ import {
 } from "./market-data";
 import { getStockChartData } from "./stock-market-data";
 import {
+  evaluateSidewaysSignal,
   validateSingleMomentum,
   calculateTechnicalIndicators,
   getStrategyTrendPeriods,
 } from "./technical-analysis";
+import type { SidewaysSignalResult } from "./technical-analysis";
 import { convertCurrency, formatCurrency } from "@/lib/format";
 
 const RISK_PARAMETERS = {
@@ -58,12 +60,15 @@ export type MarketAnalysisContext = {
     isValid: boolean;
     reason: string;
   } | null;
+  sidewaysSignal: SidewaysSignalResult | null;
   anchorRsiBlockReason: string | null;
   atrMultiplier: number;
   riskRewardRatio: number;
 };
 
-export function getAIAnalysisFailureReason(error: unknown): AIAnalysisFailureReason {
+export function getAIAnalysisFailureReason(
+  error: unknown,
+): AIAnalysisFailureReason {
   if (!(error instanceof ApiError)) return "unknown";
 
   const message = error.message.toLowerCase();
@@ -232,9 +237,17 @@ export async function prepareAnalysisContext(
           executionCandles.map((candle) => candle.volume ?? Number.NaN),
           request.momentum_indicator,
         );
+  const rawSidewaysSignal =
+    techData.adx.value !== null && !techData.adx.isStrong
+      ? evaluateSidewaysSignal(executionCandles, request.momentum_indicator)
+      : null;
   let signalStatus: SignalStatus;
-  if (!techData.adx.isStrong) {
+  if (techData.adx.value === null) {
     signalStatus = "wait_for_weak_adx";
+  } else if (!techData.adx.isStrong) {
+    signalStatus = rawSidewaysSignal?.hasSignal
+      ? "approved_sideways"
+      : "wait_for_weak_adx";
   } else if (anchorTechData.trend.signal === "Neutral") {
     signalStatus = "wait_for_major_trend";
   } else if (localDirection === null) {
@@ -249,11 +262,15 @@ export async function prepareAnalysisContext(
     signalStatus = "approved";
   }
   const systemRecommendation: AIAnalysisResponse["recommendation"] =
-    signalStatus === "approved"
-      ? localDirection === "Bullish"
+    signalStatus === "approved_sideways"
+      ? rawSidewaysSignal?.direction === "LONG"
         ? "Beli"
         : "Jual"
-      : "Wait & See";
+      : signalStatus === "approved"
+        ? localDirection === "Bullish"
+          ? "Beli"
+          : "Jual"
+        : "Wait & See";
   const fxRate = await getExchangeRateUSDIDR();
   const baseCurrency: Currency =
     request.asset_type === "crypto" ? "USD" : "IDR";
@@ -279,6 +296,33 @@ export async function prepareAnalysisContext(
   const convertedResistance = techData.keyLevels.resistance.map((value) =>
     convertCurrency(value, baseCurrency, currency, fxRate),
   );
+  const sidewaysSignal =
+    rawSidewaysSignal?.hasSignal &&
+    rawSidewaysSignal.entry !== null &&
+    rawSidewaysSignal.stopLoss !== null &&
+    rawSidewaysSignal.takeProfit !== null
+      ? {
+          ...rawSidewaysSignal,
+          entry: convertCurrency(
+            rawSidewaysSignal.entry,
+            baseCurrency,
+            currency,
+            fxRate,
+          ),
+          stopLoss: convertCurrency(
+            rawSidewaysSignal.stopLoss,
+            baseCurrency,
+            currency,
+            fxRate,
+          ),
+          takeProfit: convertCurrency(
+            rawSidewaysSignal.takeProfit,
+            baseCurrency,
+            currency,
+            fxRate,
+          ),
+        }
+      : rawSidewaysSignal;
   const anchorTrendMethod =
     anchorTechData.trend.name === "ADX"
       ? `ADX ${anchorTechData.adx.period}`
@@ -302,6 +346,7 @@ export async function prepareAnalysisContext(
     anchorTrendMethod,
     marketDataSource,
     momentumValidation,
+    sidewaysSignal,
     anchorRsiBlockReason,
     atrMultiplier,
     riskRewardRatio,

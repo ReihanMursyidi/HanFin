@@ -114,6 +114,7 @@ export interface AIAnalysisResponse {
   atrValue: number | null;
   signalStatus?:
     | "approved"
+    | "approved_sideways"
     | "rejected_against_major_trend"
     | "wait_for_major_trend"
     | "wait_for_execution_signal"
@@ -121,6 +122,7 @@ export interface AIAnalysisResponse {
     | "wait_for_momentum_reversal"
     | "wait_for_anchor_rsi_extreme"
     | "rejected_invalid_risk_setup";
+  signalMode?: "SIDEWAYS_BOUNCE";
   anchorTrend?: "Bullish" | "Bearish" | "Neutral";
   anchorTrendMethod?: string;
   anchorTimeframe?: string;

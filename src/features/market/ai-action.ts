@@ -11,10 +11,7 @@ import {
   prepareAnalysisContext,
   type MarketAnalysisContext,
 } from "./ai-analysis-context";
-import {
-  buildAnalysisPrompt,
-  buildAnalysisResult,
-} from "./ai-analysis-result";
+import { buildAnalysisPrompt, buildAnalysisResult } from "./ai-analysis-result";
 import { createAI } from "../ai/instance";
 import { createClient } from "@/lib/supabase/server";
 
@@ -63,7 +60,8 @@ export async function analyzeMarketWithAI(
     );
 
     if (
-      analysisResult.signalStatus === "approved" &&
+      (analysisResult.signalStatus === "approved" ||
+        analysisResult.signalStatus === "approved_sideways") &&
       analysisResult.targetPrices
     ) {
       const { error: saveError } = await supabase
@@ -97,6 +95,7 @@ export async function analyzeMarketWithAI(
               ...context.techData.adx,
               timeframe: context.timeframe.execution,
             },
+            sidewaysSignal: context.sidewaysSignal,
             atrValue: context.convertedAtrValue,
             riskParameters: {
               atrMultiplier: context.atrMultiplier,

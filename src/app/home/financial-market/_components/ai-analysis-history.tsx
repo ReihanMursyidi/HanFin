@@ -241,6 +241,11 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
             <span className="rounded-md bg-primary/10 px-2 py-1 font-semibold">
               {entry.recommendation}
             </span>
+            {analysis.signalMode === "SIDEWAYS_BOUNCE" && (
+              <span className="rounded-md bg-muted px-2 py-1">
+                Pantulan Sideways
+              </span>
+            )}
             <span className="text-muted-foreground">
               Risiko {entry.risk_level}
             </span>

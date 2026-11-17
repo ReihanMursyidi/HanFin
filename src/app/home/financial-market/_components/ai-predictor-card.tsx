@@ -375,6 +375,11 @@ export function AiPredictorCard({
             <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-primary/10">
               <div className="flex items-center gap-1.5 font-semibold text-xs">
                 <span>Rekomendasi: {analysis.recommendation}</span>
+                {analysis.signalMode === "SIDEWAYS_BOUNCE" && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                    Pantulan Sideways
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                 <ShieldAlert className="size-3.5 shrink-0" />
