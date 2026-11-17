@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     position: "bottom-right",
   },
   experimental: {
+    agentUpgrade: "security",
     serverActions: {
       bodySizeLimit: "5mb",
     },
