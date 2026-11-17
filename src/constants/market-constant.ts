@@ -183,6 +183,36 @@ export const CRYPTO_ASSETS: AssetConfig[] = [
     name: "Render",
     isTradeable: true,
   },
+  {
+    symbol: "LINKUSDT",
+    shortSymbol: "LINK",
+    name: "Chainlink",
+    isTradeable: true,
+  },
+  {
+    symbol: "AAVEUSDT",
+    shortSymbol: "AAVE",
+    name: "Aave",
+    isTradeable: true,
+  },
+  {
+    symbol: "UNIUSDT",
+    shortSymbol: "UNI",
+    name: "Uniswap",
+    isTradeable: true,
+  },
+  {
+    symbol: "AVAXUSDT",
+    shortSymbol: "AVAX",
+    name: "Avalanche",
+    isTradeable: true,
+  },
+  {
+    symbol: "SKYUSDT",
+    shortSymbol: "SKY",
+    name: "Sky",
+    isTradeable: true,
+  },
 ];
 
 export const BINANCE_ENDPOINTS = [
