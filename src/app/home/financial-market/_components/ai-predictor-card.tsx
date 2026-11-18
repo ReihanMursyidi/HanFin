@@ -449,9 +449,14 @@ export function AiPredictorCard({
               </div>
             )}
 
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {analysis.summary}
-            </p>
+            <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+              {analysis.summary
+                .split(/\n{2,}|\n/)
+                .filter((paragraph) => paragraph.trim())
+                .map((paragraph, index) => (
+                  <p key={index}>{paragraph.trim()}</p>
+                ))}
+            </div>
 
             <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-lg">
               <p className="text-xs font-semibold text-foreground">
@@ -463,6 +468,42 @@ export function AiPredictorCard({
                 <li>Arah harga: {analysis.trendAnalysis}</li>
                 <li>Kekuatan pergerakan: {analysis.momentumAnalysis}</li>
                 <li>Aktivitas transaksi: {analysis.volumeAnalysis}</li>
+                <li>
+                  Harga terakhir:{" "}
+                  {analysis.lastClose == null
+                    ? "-"
+                    : formatCurrency(analysis.lastClose, currency)}
+                </li>
+                <li>
+                  ADX:{" "}
+                  {analysis.adxValue == null
+                    ? "tidak tersedia"
+                    : `${analysis.adxValue.toFixed(2)} / ambang ${analysis.adxThreshold?.toFixed(2) ?? "-"}`}
+                </li>
+                {analyzedParams &&
+                  momentum === "RSI" &&
+                  analysis.rsiValue != null && (
+                    <li>
+                      RSI ({analysis.anchorTimeframe ?? "Anchor"}):{" "}
+                      {analysis.rsiValue.toFixed(2)}
+                    </li>
+                  )}
+                {analyzedParams &&
+                  momentum === "MACD" &&
+                  analysis.macdHistogram != null && (
+                    <li>
+                      Histogram MACD ({analysis.anchorTimeframe ?? "Anchor"}):{" "}
+                      {analysis.macdHistogram.toFixed(4)}
+                    </li>
+                  )}
+                {analyzedParams &&
+                  momentum === "STOCHASTIC" &&
+                  analysis.stochK != null && (
+                    <li>
+                      Stochastic %K ({analysis.anchorTimeframe ?? "Anchor"}):{" "}
+                      {analysis.stochK.toFixed(2)}
+                    </li>
+                  )}
               </ul>
             </div>
 

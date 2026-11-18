@@ -324,6 +324,15 @@ export const aiAnalysisRequestSchema = z.object({
 export const aiAnalysisResponseSchema = z.object({
   summary: z.string(),
   recommendation: z.enum(["Beli", "Jual", "Tahan", "Wait & See"]),
+  atrValue: z.number().nullable().optional(),
+  lastClose: z.number().nullable().optional(),
+  adxValue: z.number().nullable().optional(),
+  adxThreshold: z.number().nullable().optional(),
+  rsiValue: z.number().nullable().optional(),
+  macdHistogram: z.number().nullable().optional(),
+  stochK: z.number().nullable().optional(),
+  fastValue: z.number().nullable().optional(),
+  slowValue: z.number().nullable().optional(),
   riskLevel: z.enum([
     "Sangat Rendah",
     "Rendah",

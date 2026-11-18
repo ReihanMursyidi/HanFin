@@ -264,7 +264,14 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm leading-relaxed">{entry.summary}</p>
+        <div className="space-y-2 text-sm leading-relaxed">
+          {entry.summary
+            .split(/\n{2,}|\n/)
+            .filter((paragraph) => paragraph.trim())
+            .map((paragraph, index) => (
+              <p key={index}>{paragraph.trim()}</p>
+            ))}
+        </div>
 
         <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/30 p-3 text-xs sm:grid-cols-4">
           <div>
@@ -319,6 +326,39 @@ function AnalysisHistoryCard({ entry }: { entry: AIAnalysisHistoryEntry }) {
             <p>Kekuatan pergerakan: {analysis.momentumAnalysis}</p>
             <p>Aktivitas transaksi: {analysis.volumeAnalysis}</p>
             <div className="grid gap-1 border-t pt-2 sm:grid-cols-2">
+              <p>
+                Harga terakhir:{" "}
+                {analysis.lastClose == null
+                  ? "-"
+                  : formatCurrency(analysis.lastClose, entry.currency)}
+              </p>
+              <p>
+                ADX:{" "}
+                {analysis.adxValue == null
+                  ? "tidak tersedia"
+                  : `${analysis.adxValue.toFixed(2)} / ambang ${analysis.adxThreshold?.toFixed(2) ?? "-"}`}
+              </p>
+              {entry.momentum_indicator === "RSI" &&
+                analysis.rsiValue != null && (
+                  <p>
+                    RSI ({analysis.anchorTimeframe ?? "Anchor"}):{" "}
+                    {analysis.rsiValue.toFixed(2)}
+                  </p>
+                )}
+              {entry.momentum_indicator === "MACD" &&
+                analysis.macdHistogram != null && (
+                  <p>
+                    Histogram MACD ({analysis.anchorTimeframe ?? "Anchor"}):{" "}
+                    {analysis.macdHistogram.toFixed(4)}
+                  </p>
+                )}
+              {entry.momentum_indicator === "STOCHASTIC" &&
+                analysis.stochK != null && (
+                  <p>
+                    Stochastic %K ({analysis.anchorTimeframe ?? "Anchor"}):{" "}
+                    {analysis.stochK.toFixed(2)}
+                  </p>
+                )}
               <p>
                 Support:{" "}
                 {analysis.keyLevels.support

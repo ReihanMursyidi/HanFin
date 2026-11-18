@@ -112,6 +112,14 @@ export interface AIAnalysisResponse {
   recommendation: "Beli" | "Jual" | "Tahan" | "Wait & See";
   riskLevel: "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi";
   atrValue: number | null;
+  lastClose?: number | null;
+  adxValue?: number | null;
+  adxThreshold?: number | null;
+  rsiValue?: number | null;
+  macdHistogram?: number | null;
+  stochK?: number | null;
+  fastValue?: number | null;
+  slowValue?: number | null;
   signalStatus?:
     | "approved"
     | "approved_sideways"

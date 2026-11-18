@@ -10,6 +10,54 @@ const STATIC_STOP_LOSS_PERCENTAGES = {
   investing: 10,
 } as const;
 
+function formatSummaryParagraphs(
+  aiSummary: string,
+  systemNotes: string[],
+): string {
+  const normalizedBase = aiSummary
+    .replace(/Sistem memilih Wait & See[.!]?/gi, "")
+    .replace(/sistem memilih Wait & See[.!]?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  const paragraphs = normalizedBase
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length === 1) {
+    const sentences = paragraphs[0].match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+    if (sentences && sentences.length >= 3) {
+      const cleanedSentences = sentences
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+      const midpoint = Math.ceil(cleanedSentences.length / 2);
+      paragraphs.splice(
+        0,
+        1,
+        cleanedSentences.slice(0, midpoint).join(" "),
+        cleanedSentences.slice(midpoint).join(" "),
+      );
+    }
+  }
+
+  if (paragraphs.length === 0 && aiSummary.trim()) {
+    paragraphs.push(aiSummary.trim());
+  }
+
+  const uniqueNotes = [
+    ...new Set(systemNotes.map((note) => note.trim()).filter(Boolean)),
+  ];
+  if (uniqueNotes.length > 0) {
+    paragraphs.push(uniqueNotes.join(" "));
+  }
+
+  return paragraphs
+    .map((paragraph) => paragraph.replace(/\s+\./g, ".").trim())
+    .join("\n\n");
+}
+
 export function buildAnalysisPrompt(
   request: AIAnalysisRequest,
   currency: Currency,
@@ -47,6 +95,7 @@ export function buildAnalysisPrompt(
     MATA UANG TARGET ANALISIS: **${currency}**
     Seluruh harga dan level ditulis dalam mata uang **${currency}**.
     Sumber candle: **${marketDataSource}**.
+    Waktu pengambilan data untuk request ini: **${new Date().toISOString()}**.
 
     GAYA PENJELASAN:
     - Gunakan gaya penyampaian yang kasual dan tidak bertele-tele.
@@ -54,6 +103,7 @@ export function buildAnalysisPrompt(
     - Jelaskan arti sinyal berdasarkan data yang diberikan, bukan definisi umum yang panjang.
     - Jangan mengarang berita, alasan, angka, atau kondisi pasar yang tidak ada di data.
     - Hindari menyampaikan hasil sebagai kepastian; harga dapat bergerak berbeda dari perkiraan.
+    - Gunakan hanya data candle yang diambil secara fresh pada request ini.
 
     KONDISI SINYAL TEKNIKAL:
     - Anchor Timeframe ${timeframe.anchor}: tren ${anchorTechData.trend.signal} memakai ${anchorTrendMethod}.
@@ -76,7 +126,8 @@ export function buildAnalysisPrompt(
     - Stop loss statis darurat jika ATR tidak tersedia: ${STATIC_STOP_LOSS_PERCENTAGES[request.strategy]}% dari harga entry.
     - Parameter risiko: Multiplier ATR ${atrMultiplier}x, Rasio R:R 1:${riskRewardRatio}
     - Trend Execution (${techData.trend.name}): ${techData.trend.signal}, Fast ${convertedFastValue === null ? "-" : formatCurrency(convertedFastValue, currency)}, Slow ${convertedSlowValue === null ? "-" : formatCurrency(convertedSlowValue, currency)}.
-    - Momentum (${techData.momentum.name}): RSI ${techData.momentum.rsiValue?.toFixed(2)}, Sinyal ${techData.momentum.signal}
+    - Nilai momentum Execution ${timeframe.execution} hanya dipakai untuk sinyal lokal dan konfirmasi reversal; jangan gunakan untuk menyimpulkan zona jenuh Anchor.
+    - Nilai momentum Anchor ${timeframe.anchor} yang wajib dipakai untuk penilaian jenuh/pembalikan: ${request.momentum_indicator === "RSI" ? `RSI ${anchorTechData.rsi.value?.toFixed(2) ?? "tidak tersedia"}` : request.momentum_indicator === "MACD" ? `Histogram MACD ${anchorTechData.momentum.macdHistogram?.toFixed(4) ?? "tidak tersedia"}` : `Stochastic %K ${anchorTechData.momentum.stochK?.toFixed(2) ?? "tidak tersedia"}`}.
     - Volume (${techData.volume.name}): Sinyal ${techData.volume.signal}
     - Support Execution terdekat: [${convertedSupport.join(", ")}]
     - Resistance Execution terdekat: [${convertedResistance.join(", ")}]
@@ -86,7 +137,7 @@ export function buildAnalysisPrompt(
 
     Berikan JSON murni sesuai skema:
     {
-      "summary": "Maksimal 2-3 kalimat sederhana: apa yang terlihat, mengapa sistem memberi rekomendasi tersebut (termasuk filter ADX, validasi momentum, atau setup pantulan sideways), dan risiko atau ketidakpastian utamanya.",
+      "summary": "Bentuk ringkasan dalam 2-3 paragraf singkat. Jangan menyebut angka harga, persentase, ATR, ADX, RSI, atau level support/resistance; angka akan ditampilkan di Detail Analisis. Jelaskan kondisi pasar dan alasan keputusan secara naratif. Jangan mengulang frasa 'Sistem memilih Wait & See'. Pisahkan tiap paragraf dengan dua baris baru.",
       "recommendation": "Beli" | "Jual" | "Tahan" | "Wait & See",
       "riskLevel": "Sangat Rendah" | "Rendah" | "Sedang" | "Tinggi" | "Sangat Tinggi",
       "trendAnalysis": "Maksimal 2 kalimat sederhana tentang arah tren utama dan arah harga pada timeframe eksekusi. Jelaskan istilah yang digunakan.",
@@ -110,6 +161,7 @@ export function buildAnalysisResult(
   let targetPrices: AIAnalysisResponse["targetPrices"];
   let stopMethod: AIAnalysisResponse["stopMethod"];
   let summary = aiResponse.summary;
+  const systemSummaryNotes: string[] = [];
   const isLong = recommendation === "Beli";
   const isShort = recommendation === "Jual";
   const sidewaysSetup =
@@ -175,16 +227,19 @@ export function buildAnalysisResult(
           ? "static_percentage"
           : "atr";
       if (!sidewaysSetup && atrBuffer === null) {
-        summary += ` ATR 14 pada Execution Timeframe tidak tersedia; stop loss darurat ${STATIC_STOP_LOSS_PERCENTAGES[request.strategy]}% digunakan.`;
+        systemSummaryNotes.push(
+          "ATR belum tersedia, sehingga penggunaan level risiko darurat perlu diperhatikan.",
+        );
       }
       if (sidewaysSetup) {
-        summary += ` ${sidewaysSetup.reason}`;
+        systemSummaryNotes.push(sidewaysSetup.reason);
       }
     } else {
       recommendation = "Wait & See";
       signalStatus = "rejected_invalid_risk_setup";
-      summary +=
-        " Setup transaksi dibatalkan karena perhitungan level risiko menghasilkan harga yang tidak valid.";
+      systemSummaryNotes.push(
+        "Setup transaksi dibatalkan karena level risiko yang dihitung tidak valid.",
+      );
     }
   }
 
@@ -192,31 +247,55 @@ export function buildAnalysisResult(
     !context.techData.adx.isStrong &&
     context.signalStatus !== "approved_sideways"
   ) {
-    const adxValue = context.techData.adx.value;
-    summary +=
-      adxValue === null
-        ? ` Nilai ADX(${context.techData.adx.period}) belum tersedia dari data candle, sehingga sistem memilih Wait & See.`
-        : ` ADX(${context.techData.adx.period}) pada timeframe eksekusi bernilai ${adxValue.toFixed(2)} dan belum melewati ambang > ${context.techData.adx.threshold}; ${context.sidewaysSignal?.hasSignal === false ? `${context.sidewaysSignal.reason} Sistem memilih Wait & See.` : "sistem memilih Wait & See."}`;
+    systemSummaryNotes.push(
+      context.techData.adx.value === null
+        ? "ADX belum tersedia untuk mengonfirmasi kekuatan tren."
+        : context.sidewaysSignal?.hasSignal === false
+          ? context.sidewaysSignal.reason
+          : "ADX belum cukup kuat untuk mengonfirmasi arah tren.",
+    );
   }
   if (
     context.signalStatus !== "approved_sideways" &&
     context.momentumValidation &&
     !context.momentumValidation.isValid
   ) {
-    summary += ` ${context.momentumValidation.reason} Sistem memilih Wait & See.`;
+    systemSummaryNotes.push(
+      `Indikator ${request.momentum_indicator} belum mengonfirmasi momentum yang konsisten.`,
+    );
   }
   if (
     context.signalStatus !== "approved_sideways" &&
     context.anchorRsiBlockReason !== null
   ) {
-    summary += ` ${context.anchorRsiBlockReason} Sistem memilih Wait & See.`;
+    systemSummaryNotes.push(
+      "RSI pada timeframe utama berada di zona ekstrem yang menahan sinyal transaksi.",
+    );
   }
+  summary = formatSummaryParagraphs(summary, systemSummaryNotes);
 
   return {
     ...aiResponse,
     recommendation,
     summary,
     atrValue: context.convertedAtrValue,
+    lastClose: context.convertedLastClose,
+    adxValue: context.techData.adx.value,
+    adxThreshold: context.techData.adx.threshold,
+    rsiValue:
+      request.momentum_indicator === "RSI"
+        ? context.anchorTechData.rsi.value
+        : null,
+    macdHistogram:
+      request.momentum_indicator === "MACD"
+        ? context.anchorTechData.momentum.macdHistogram
+        : null,
+    stochK:
+      request.momentum_indicator === "STOCHASTIC"
+        ? context.anchorTechData.momentum.stochK
+        : null,
+    fastValue: context.convertedFastValue,
+    slowValue: context.convertedSlowValue,
     signalStatus,
     signalMode:
       signalStatus === "approved_sideways" ? sidewaysSetup?.mode : undefined,

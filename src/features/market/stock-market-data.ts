@@ -11,26 +11,28 @@ const yahooFinance = new YahooFinance({
 });
 
 export const getExchangeRateUSDIDR = unstable_cache(
-  async (): Promise<number> => {
-    try {
-      const quote = (await yahooFinance.quote("IDR=X")) as {
-        regularMarketPrice?: number;
-      };
-      if (quote.regularMarketPrice && quote.regularMarketPrice > 0) {
-        return quote.regularMarketPrice;
-      }
-      console.error(
-        "FX Service Error: Yahoo Finance returned no valid rate, using FALLBACK_USD_IDR_RATE",
-      );
-      return FALLBACK_USD_IDR_RATE;
-    } catch (error) {
-      console.error("FX Service Error (Yahoo Finance):", error);
-      return FALLBACK_USD_IDR_RATE;
-    }
-  },
+  async (): Promise<number> => loadFreshExchangeRateUSDIDR(),
   ["usd-idr-exchange-rate"],
   { revalidate: 300 },
 );
+
+export async function loadFreshExchangeRateUSDIDR(): Promise<number> {
+  try {
+    const quote = (await yahooFinance.quote("IDR=X")) as {
+      regularMarketPrice?: number;
+    };
+    if (quote.regularMarketPrice && quote.regularMarketPrice > 0) {
+      return quote.regularMarketPrice;
+    }
+    console.error(
+      "FX Service Error: Yahoo Finance returned no valid rate, using FALLBACK_USD_IDR_RATE",
+    );
+    return FALLBACK_USD_IDR_RATE;
+  } catch (error) {
+    console.error("FX Service Error (Yahoo Finance):", error);
+    return FALLBACK_USD_IDR_RATE;
+  }
+}
 
 // STOCKS MARKET (VIA YAHOO FINANCE)
 type YahooStockQuote = {

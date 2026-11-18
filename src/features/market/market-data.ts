@@ -9,19 +9,23 @@ import {
 } from "@/constants/market-constant";
 import {
   getExchangeRateUSDIDR as loadExchangeRateUSDIDR,
+  loadFreshExchangeRateUSDIDR,
   getStockMarketData as loadStockMarketData,
 } from "./stock-market-data";
 
 async function fetchBinancePublic<T>(
   path: string,
   endpoints: readonly string[] = BINANCE_ENDPOINTS,
+  cacheMode: "cached" | "no-store" = "cached",
 ): Promise<T> {
   const failures: string[] = [];
 
   for (const baseUrl of endpoints) {
     try {
       const response = await fetch(`${baseUrl}${path}`, {
-        next: { revalidate: 60 },
+        ...(cacheMode === "no-store"
+          ? { cache: "no-store" as const }
+          : { next: { revalidate: 60 } }),
       });
       if (response.ok) {
         return (await response.json()) as T;
@@ -122,6 +126,7 @@ async function loadCryptoSpotChartData(
   interval: string,
   limit: number,
   startTime: number | undefined,
+  cacheMode: "cached" | "no-store" = "cached",
 ): Promise<OHLCData[]> {
   try {
     const binanceSymbol = `${symbol}USDT`;
@@ -129,7 +134,11 @@ async function loadCryptoSpotChartData(
 
     if (startTime === undefined) {
       const path = `/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
-      klines = await fetchBinancePublic<BinanceKline[]>(path);
+      klines = await fetchBinancePublic<BinanceKline[]>(
+        path,
+        BINANCE_ENDPOINTS,
+        cacheMode,
+      );
     } else {
       const endTime = Date.now();
       let nextStartTime = startTime;
@@ -139,7 +148,11 @@ async function loadCryptoSpotChartData(
         const path =
           `/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}` +
           `&startTime=${nextStartTime}&endTime=${endTime}&limit=1000`;
-        const batch = await fetchBinancePublic<BinanceKline[]>(path);
+        const batch = await fetchBinancePublic<BinanceKline[]>(
+          path,
+          BINANCE_ENDPOINTS,
+          cacheMode,
+        );
 
         if (batch.length === 0) break;
 
@@ -199,17 +212,35 @@ export const getCryptoChartData = unstable_cache(
   { revalidate: 60 },
 );
 
+export async function getCryptoChartDataFresh(
+  symbol: string,
+  interval: string = "1d",
+  limit: number = 100,
+  startTime?: number,
+): Promise<OHLCData[]> {
+  return loadCryptoSpotChartData(
+    symbol,
+    interval,
+    limit,
+    startTime,
+    "no-store",
+  );
+}
+
 async function loadBybitLinearFuturesChartData(
   symbol: string,
   interval: BybitInterval,
   startTime: number | undefined,
+  cacheMode: "cached" | "no-store" = "cached",
+  candleLimit?: number,
 ): Promise<OHLCData[]> {
   const bybitInterval = BYBIT_INTERVALS[interval];
   const bybitSymbol = `${symbol}USDT`;
-  const requestLimit = 1000;
+  const requestLimit = Math.min(candleLimit ?? 1000, 1000);
   const candlesByOpenTime = new Map<number, OHLCData>();
   const requestedStartTime =
-    startTime ?? Date.now() - 365 * 24 * 60 * 60 * 1000;
+    startTime ??
+    (candleLimit === undefined ? Date.now() - 365 * 24 * 60 * 60 * 1000 : 0);
   let pageEndTime = Date.now();
 
   while (pageEndTime >= requestedStartTime) {
@@ -226,7 +257,9 @@ async function loadBybitLinearFuturesChartData(
 
     const response = await fetch(
       `${BYBIT_API_BASE_URL}/v5/market/kline?${params.toString()}`,
-      { next: { revalidate: 60 } },
+      cacheMode === "no-store"
+        ? { cache: "no-store" }
+        : { next: { revalidate: 60 } },
     );
     if (!response.ok) {
       const responseBody = (await response.text()).slice(0, 200);
@@ -270,7 +303,13 @@ async function loadBybitLinearFuturesChartData(
       });
     }
 
-    if (batch.length < requestLimit || !Number.isFinite(oldestOpenTime)) break;
+    if (
+      batch.length < requestLimit ||
+      !Number.isFinite(oldestOpenTime) ||
+      (candleLimit !== undefined && candlesByOpenTime.size >= candleLimit)
+    ) {
+      break;
+    }
     const nextEndTime = oldestOpenTime - 1;
     if (nextEndTime >= pageEndTime) {
       throw new Error(
@@ -280,9 +319,10 @@ async function loadBybitLinearFuturesChartData(
     pageEndTime = nextEndTime;
   }
 
-  return [...candlesByOpenTime.entries()]
+  const candles = [...candlesByOpenTime.entries()]
     .sort(([timeA], [timeB]) => timeA - timeB)
     .map(([, candle]) => candle);
+  return candleLimit === undefined ? candles : candles.slice(-candleLimit);
 }
 
 export const getBybitLinearFuturesChartData = unstable_cache(
@@ -296,9 +336,26 @@ export const getBybitLinearFuturesChartData = unstable_cache(
   { revalidate: 60 },
 );
 
+export async function getBybitLinearFuturesChartDataFresh(
+  symbol: string,
+  interval: BybitInterval,
+  candleLimit: number,
+): Promise<OHLCData[]> {
+  return loadBybitLinearFuturesChartData(
+    symbol,
+    interval,
+    undefined,
+    "no-store",
+    candleLimit,
+  );
+}
 
 export async function getExchangeRateUSDIDR(): Promise<number> {
   return loadExchangeRateUSDIDR();
+}
+
+export async function getFreshExchangeRateUSDIDR(): Promise<number> {
+  return loadFreshExchangeRateUSDIDR();
 }
 
 export async function getStockMarketData(): Promise<MarketAsset[]> {

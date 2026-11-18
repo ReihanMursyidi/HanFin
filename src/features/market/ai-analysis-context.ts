@@ -7,9 +7,9 @@ import {
   OHLCData,
 } from "./types";
 import {
-  getCryptoChartData,
-  getBybitLinearFuturesChartData,
-  getExchangeRateUSDIDR,
+  getCryptoChartDataFresh,
+  getBybitLinearFuturesChartDataFresh,
+  getFreshExchangeRateUSDIDR,
 } from "./market-data";
 import { getStockChartData } from "./stock-market-data";
 import {
@@ -23,21 +23,30 @@ import { convertCurrency, formatCurrency } from "@/lib/format";
 
 const RISK_PARAMETERS = {
   scalping: { atrMultiplier: 0.75, riskRewardRatio: 1.5 },
-  day_trading: { atrMultiplier: 1.2, riskRewardRatio: 2 },
+  day_trading: { atrMultiplier: 1.5, riskRewardRatio: 2 },
   swing_trading: { atrMultiplier: 2, riskRewardRatio: 3 },
   investing: { atrMultiplier: 3, riskRewardRatio: 4 },
 } as const;
 
 const TIMEFRAMES = {
-  scalping: { anchor: "15m", execution: "5m", lookbackDays: 7 },
-  day_trading: { anchor: "1h", execution: "30m", lookbackDays: 30 },
-  swing_trading: { anchor: "1d", execution: "4h", lookbackDays: 365 * 3 },
-  investing: { anchor: "1wk", execution: "1d", startDate: "2020-01-01" },
+  scalping: { anchor: "15m", execution: "5m", candleLimit: 150 },
+  day_trading: { anchor: "1h", execution: "15m", candleLimit: 200 },
+  swing_trading: { anchor: "1d", execution: "4h", candleLimit: 250 },
+  investing: { anchor: "1wk", execution: "1d", candleLimit: 250 },
 } as const;
 
-const YAHOO_INTRADAY_LOOKBACK_DAYS = 700;
+const STOCK_CANDLES_PER_TRADING_DAY: Record<StockInterval, number> = {
+  "5m": 78,
+  "15m": 26,
+  "30m": 13,
+  "1h": 7,
+  "4h": 2,
+  "1d": 1,
+  "1wk": 1 / 5,
+};
 
 type StrategyTimeframe = (typeof TIMEFRAMES)[keyof typeof TIMEFRAMES];
+type StockInterval = "5m" | "15m" | "30m" | "1h" | "4h" | "1d" | "1wk";
 type SignalStatus = NonNullable<AIAnalysisResponse["signalStatus"]>;
 export type MarketAnalysisContext = {
   timeframe: StrategyTimeframe;
@@ -97,24 +106,14 @@ export async function prepareAnalysisContext(
   currency: Currency,
 ): Promise<MarketAnalysisContext> {
   const timeframe = TIMEFRAMES[request.strategy];
-  const endDate = new Date();
-  const startDate =
-    "startDate" in timeframe
-      ? timeframe.startDate
-      : new Date(
-          endDate.getTime() - timeframe.lookbackDays * 24 * 60 * 60 * 1000,
-        )
-          .toISOString()
-          .slice(0, 10);
-  const stockExecutionStartDate =
-    request.strategy === "swing_trading"
-      ? new Date(
-          endDate.getTime() -
-            YAHOO_INTRADAY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-        )
-          .toISOString()
-          .slice(0, 10)
-      : startDate;
+  const getStockPeriodStart = (interval: StockInterval) => {
+    const tradingDays =
+      timeframe.candleLimit / STOCK_CANDLES_PER_TRADING_DAY[interval];
+    const calendarDays = Math.ceil(tradingDays * (7 / 5) * 1.25);
+    return new Date(Date.now() - calendarDays * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+  };
   let marketDataSource =
     request.asset_type === "crypto"
       ? "Bybit Linear Futures (USDT)"
@@ -126,15 +125,15 @@ export async function prepareAnalysisContext(
     let futuresCandles: [OHLCData[], OHLCData[]] | null = null;
     try {
       futuresCandles = await Promise.all([
-        getBybitLinearFuturesChartData(
+        getBybitLinearFuturesChartDataFresh(
           request.symbol,
           timeframe.anchor === "1wk" ? "1w" : timeframe.anchor,
-          Date.parse(startDate),
+          timeframe.candleLimit,
         ),
-        getBybitLinearFuturesChartData(
+        getBybitLinearFuturesChartDataFresh(
           request.symbol,
           timeframe.execution,
-          Date.parse(startDate),
+          timeframe.candleLimit,
         ),
       ]);
     } catch (error) {
@@ -150,17 +149,15 @@ export async function prepareAnalysisContext(
       futuresCandles[1].length < 10
     ) {
       const [spotAnchorCandles, spotExecutionCandles] = await Promise.all([
-        getCryptoChartData(
+        getCryptoChartDataFresh(
           request.symbol,
           timeframe.anchor === "1wk" ? "1w" : timeframe.anchor,
-          100,
-          Date.parse(startDate),
+          timeframe.candleLimit,
         ),
-        getCryptoChartData(
+        getCryptoChartDataFresh(
           request.symbol,
           timeframe.execution,
-          100,
-          Date.parse(startDate),
+          timeframe.candleLimit,
         ),
       ]);
 
@@ -173,12 +170,16 @@ export async function prepareAnalysisContext(
     }
   } else {
     [anchorCandles, executionCandles] = await Promise.all([
-      getStockChartData(request.symbol, startDate, timeframe.anchor),
       getStockChartData(
         request.symbol,
-        stockExecutionStartDate,
+        getStockPeriodStart(timeframe.anchor),
+        timeframe.anchor,
+      ).then((candles) => candles.slice(-timeframe.candleLimit)),
+      getStockChartData(
+        request.symbol,
+        getStockPeriodStart(timeframe.execution),
         timeframe.execution,
-      ),
+      ).then((candles) => candles.slice(-timeframe.candleLimit)),
     ]);
   }
   if (anchorCandles.length < 10) {
@@ -271,7 +272,7 @@ export async function prepareAnalysisContext(
           ? "Beli"
           : "Jual"
         : "Wait & See";
-  const fxRate = await getExchangeRateUSDIDR();
+  const fxRate = await getFreshExchangeRateUSDIDR();
   const baseCurrency: Currency =
     request.asset_type === "crypto" ? "USD" : "IDR";
   const convertedLastClose = convertCurrency(
