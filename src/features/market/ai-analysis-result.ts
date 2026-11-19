@@ -79,7 +79,6 @@ export function buildAnalysisPrompt(
     anchorTrendMethod,
     marketDataSource,
     momentumValidation,
-    sidewaysSignal,
     anchorRsiBlockReason,
     atrMultiplier,
     riskRewardRatio,
@@ -112,12 +111,11 @@ export function buildAnalysisPrompt(
     - Skor konfluensi Execution: ${techData.bullishCount} bullish dan ${techData.bearishCount} bearish dari 3 indikator.
     - Filter kekuatan tren ADX di Execution Timeframe: ADX(${techData.adx.period}) = ${techData.adx.value === null ? "tidak tersedia" : techData.adx.value.toFixed(2)}, ambang > ${techData.adx.threshold}. Filter ${techData.adx.isStrong ? "lolos" : "tidak lolos"}.
     - Indikator momentum yang dipilih: ${request.momentum_indicator}. Validasi momentum dan potensi reversal: ${momentumValidation ? `${momentumValidation.isValid ? "lolos" : "gagal"} — ${momentumValidation.reason}` : "tidak dijalankan karena sinyal lokal netral"}.
-    - Evaluasi sideways: ${sidewaysSignal?.hasSignal ? `${sidewaysSignal.mode} ${sidewaysSignal.direction}; ${sidewaysSignal.reason}. Entry ${sidewaysSignal.entry}, SL ${sidewaysSignal.stopLoss}, TP ${sidewaysSignal.takeProfit}.` : (sidewaysSignal?.reason ?? "tidak dijalankan karena ADX tidak rendah")}.
     - Status validasi multi-timeframe: **${signalStatus}**
     - Rekomendasi sistem yang wajib digunakan: **${systemRecommendation}**
     Jangan mengubah status atau rekomendasi sistem.
-    Jika indikator momentum yang dipilih adalah RSI, RSI Anchor Timeframe di atas 75 saat sinyal lokal Bullish atau di bawah 25 saat sinyal lokal Bearish wajib menahan sinyal dengan rekomendasi "Wait & See", kecuali sistem sudah menyetujui SIDEWAYS_BOUNCE.
-    Jika ADX tidak tersedia, rekomendasi wajib "Wait & See". Jika ADX rendah dan status sistem approved_sideways, gunakan arah rekomendasi dan level sideways yang diberikan; jika tidak ada sinyal sideways terkonfirmasi, rekomendasi wajib "Wait & See".
+    Jika ADX tidak tersedia atau kekuatan tren belum melewati ambang, rekomendasi wajib "Wait & See".
+    Jika indikator momentum yang dipilih adalah RSI, RSI Anchor Timeframe di atas 75 saat sinyal lokal Bullish atau di bawah 25 saat sinyal lokal Bearish wajib menahan sinyal dengan rekomendasi "Wait & See".
     Jika validasi momentum dan reversal gagal pada sinyal trending, rekomendasi wajib "Wait & See" dan jangan memberikan target transaksi.
 
     DETAIL INDIKATOR (DALAM ${currency}):
@@ -132,7 +130,7 @@ export function buildAnalysisPrompt(
     - Support Execution terdekat: [${convertedSupport.join(", ")}]
     - Resistance Execution terdekat: [${convertedResistance.join(", ")}]
 
-    Jika status approved, sistem menghitung level transaksi dengan metode trending. Jika status approved_sideways, gunakan persis entry, SL, dan TP dari evaluasi SIDEWAYS_BOUNCE (R:R 1:2). Jika status bukan approved atau approved_sideways, jangan berikan target transaksi.
+    Jika status approved, sistem menghitung level transaksi dengan metode trending. Jika status bukan approved, jangan berikan target transaksi.
     Saat menjelaskan istilah: tren utama adalah arah pergerakan yang lebih besar; timeframe eksekusi adalah rentang yang dipakai untuk mencari titik transaksi; support adalah area harga yang berpotensi menahan penurunan; resistance adalah area yang berpotensi menahan kenaikan; ATR menggambarkan besar-kecilnya gerakan harga. Gunakan penjelasan ini secara singkat hanya jika istilah tersebut disebut.
 
     Berikan JSON murni sesuai skema:
@@ -164,13 +162,9 @@ export function buildAnalysisResult(
   const systemSummaryNotes: string[] = [];
   const isLong = recommendation === "Beli";
   const isShort = recommendation === "Jual";
-  const sidewaysSetup =
-    context.signalStatus === "approved_sideways"
-      ? context.sidewaysSignal
-      : null;
 
   if (isLong || isShort) {
-    const entryPrice = sidewaysSetup?.entry ?? context.convertedLastClose;
+    const entryPrice = context.convertedLastClose;
     const keyLevel = isLong
       ? context.convertedSupport[0]
       : context.convertedResistance[0];
@@ -180,9 +174,8 @@ export function buildAnalysisResult(
         : context.atrMultiplier * context.convertedAtrValue;
     const staticRiskDistance =
       entryPrice * (STATIC_STOP_LOSS_PERCENTAGES[request.strategy] / 100);
-    const stopLoss = sidewaysSetup
-      ? (sidewaysSetup.stopLoss ?? Number.NaN)
-      : atrBuffer !== null
+    const stopLoss =
+      atrBuffer !== null
         ? isLong
           ? keyLevel - atrBuffer
           : keyLevel + atrBuffer
@@ -190,22 +183,15 @@ export function buildAnalysisResult(
           ? entryPrice - staticRiskDistance
           : entryPrice + staticRiskDistance;
     const riskDistance = Math.abs(entryPrice - stopLoss);
-    const profitDistance = sidewaysSetup?.takeProfit
-      ? Math.abs(sidewaysSetup.takeProfit - entryPrice)
-      : riskDistance * context.riskRewardRatio;
-    const takeProfit = sidewaysSetup
-      ? (sidewaysSetup.takeProfit ?? Number.NaN)
-      : isLong
-        ? entryPrice + profitDistance
-        : entryPrice - profitDistance;
+    const profitDistance = riskDistance * context.riskRewardRatio;
+    const takeProfit = isLong
+      ? entryPrice + profitDistance
+      : entryPrice - profitDistance;
 
     if (
       [entryPrice, stopLoss, takeProfit, riskDistance, profitDistance].every(
         Number.isFinite,
       ) &&
-      (!sidewaysSetup ||
-        (sidewaysSetup.hasSignal &&
-          sidewaysSetup.direction === (isLong ? "LONG" : "SHORT"))) &&
       entryPrice > 0 &&
       stopLoss > 0 &&
       takeProfit > 0 &&
@@ -221,18 +207,11 @@ export function buildAnalysisResult(
         stopLossPercent: (riskDistance / entryPrice) * 100,
         takeProfitPercent: (profitDistance / entryPrice) * 100,
       };
-      stopMethod = sidewaysSetup
-        ? "atr"
-        : atrBuffer === null
-          ? "static_percentage"
-          : "atr";
-      if (!sidewaysSetup && atrBuffer === null) {
+      stopMethod = atrBuffer === null ? "static_percentage" : "atr";
+      if (atrBuffer === null) {
         systemSummaryNotes.push(
           "ATR belum tersedia, sehingga penggunaan level risiko darurat perlu diperhatikan.",
         );
-      }
-      if (sidewaysSetup) {
-        systemSummaryNotes.push(sidewaysSetup.reason);
       }
     } else {
       recommendation = "Wait & See";
@@ -243,31 +222,19 @@ export function buildAnalysisResult(
     }
   }
 
-  if (
-    !context.techData.adx.isStrong &&
-    context.signalStatus !== "approved_sideways"
-  ) {
+  if (!context.techData.adx.isStrong) {
     systemSummaryNotes.push(
       context.techData.adx.value === null
         ? "ADX belum tersedia untuk mengonfirmasi kekuatan tren."
-        : context.sidewaysSignal?.hasSignal === false
-          ? context.sidewaysSignal.reason
-          : "ADX belum cukup kuat untuk mengonfirmasi arah tren.",
+        : "ADX belum cukup kuat untuk mengonfirmasi arah tren.",
     );
   }
-  if (
-    context.signalStatus !== "approved_sideways" &&
-    context.momentumValidation &&
-    !context.momentumValidation.isValid
-  ) {
+  if (context.momentumValidation && !context.momentumValidation.isValid) {
     systemSummaryNotes.push(
       `Indikator ${request.momentum_indicator} belum mengonfirmasi momentum yang konsisten.`,
     );
   }
-  if (
-    context.signalStatus !== "approved_sideways" &&
-    context.anchorRsiBlockReason !== null
-  ) {
+  if (context.anchorRsiBlockReason !== null) {
     systemSummaryNotes.push(
       "RSI pada timeframe utama berada di zona ekstrem yang menahan sinyal transaksi.",
     );
@@ -297,8 +264,6 @@ export function buildAnalysisResult(
     fastValue: context.convertedFastValue,
     slowValue: context.convertedSlowValue,
     signalStatus,
-    signalMode:
-      signalStatus === "approved_sideways" ? sidewaysSetup?.mode : undefined,
     anchorTrend: context.anchorTechData.trend.signal,
     anchorTrendMethod: context.anchorTrendMethod,
     anchorTimeframe: context.timeframe.anchor,

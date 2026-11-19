@@ -60,8 +60,7 @@ export async function analyzeMarketWithAI(
     );
 
     if (
-      (analysisResult.signalStatus === "approved" ||
-        analysisResult.signalStatus === "approved_sideways") &&
+      analysisResult.signalStatus === "approved" &&
       analysisResult.targetPrices
     ) {
       const { error: saveError } = await supabase
@@ -95,7 +94,6 @@ export async function analyzeMarketWithAI(
               ...context.techData.adx,
               timeframe: context.timeframe.execution,
             },
-            sidewaysSignal: context.sidewaysSignal,
             atrValue: context.convertedAtrValue,
             riskParameters: {
               atrMultiplier: context.atrMultiplier,
